@@ -36,7 +36,8 @@ import {
   updateAnimal,
 } from "./state";
 
-const port = Number(process.env.BOARD_PORT ?? DEFAULT_BOARD_PORT);
+// Hosts such as Render, Railway and Fly tell the server which port to use in PORT.
+const port = Number(process.env.BOARD_PORT ?? process.env.PORT ?? DEFAULT_BOARD_PORT);
 
 /**
  * Pages allowed to open a board connection. Browsers send cookies with

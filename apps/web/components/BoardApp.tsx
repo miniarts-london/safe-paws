@@ -119,7 +119,11 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
         ) : (
           <Stack spacing={2} sx={{ alignItems: "center", py: 8 }}>
             {status === "closed" ? (
-              <Alert severity="warning">Can&apos;t reach the board server. Start it with npm run dev.</Alert>
+              <Alert severity="warning">
+                {process.env.NODE_ENV === "development"
+                  ? "Can't reach the board server. Start it with npm run dev."
+                  : "Can't reach the board server. Trying again…"}
+              </Alert>
             ) : (
               <>
                 <CircularProgress size={28} />
