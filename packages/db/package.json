@@ -1,0 +1,27 @@
+{
+  "name": "@safe-paws/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Postgres access for the web app and the board server: pool, migrations, seed data.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate.ts",
+    "./seed": "./src/seed.ts"
+  },
+  "scripts": {
+    "migrate": "tsx --env-file-if-exists=../../.env.local src/cli.ts migrate",
+    "seed": "tsx --env-file-if-exists=../../.env.local src/cli.ts seed",
+    "reset": "tsx --env-file-if-exists=../../.env.local src/cli.ts reset",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@safe-paws/shared": "*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@safe-paws/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types, sample data, session signing and the client store, shared by the web app, the mobile app and the server.",
+  "exports": {
+    "./protocol": "./src/protocol.ts",
+    "./seed": "./src/seed.ts",
+    "./session": "./src/session.ts",
+    "./store": "./src/store.ts",
+    "./time": "./src/time.ts",
+    "./stages": "./src/stages.ts",
+    "./schemas": "./src/schemas.ts",
+    "./format": "./src/format.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "zustand": "^5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "typescript": "^5",
+    "zustand": "^5.0.15",
+    "react": "19.2.3"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

@@ -1,0 +1,5 @@
+/* Base styles come from MUI's CssBaseline; this only sizes the page. */
+html,
+body {
+  height: 100%;
+}
