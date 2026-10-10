@@ -98,6 +98,13 @@ async function scenario() {
       "safe-paws",
       `bearer.${createSessionToken("kaori").token}`,
     ]),
+    // The website on another domain from the board server: no cookie, token in the handshake.
+    "website, token": await attempt({}, ORIGIN, ["safe-paws-web", `bearer.${createSessionToken("kaori").token}`]),
+    "website, token, other website": await attempt({}, "https://evil.example", [
+      "safe-paws-web",
+      `bearer.${createSessionToken("kaori").token}`,
+    ]),
+    "website, forged token": await attempt({}, ORIGIN, ["safe-paws-web", `bearer.${forged}`]),
   };
   console.log("handshakes:", checks);
   const refusedOk =
@@ -106,7 +113,10 @@ async function scenario() {
     checks["other website"] === "403" &&
     checks["app, forged token"] === "401" &&
     checks["app, valid token"] === "opened" &&
-    checks["app, token as subprotocol"] === "opened";
+    checks["app, token as subprotocol"] === "opened" &&
+    checks["website, token"] === "opened" &&
+    checks["website, token, other website"] === "403" &&
+    checks["website, forged token"] === "401";
 
   const people = Object.fromEntries(["karim", "kaori", "mona", "sara"].map((id) => [id, connect(id)]));
   await Promise.all(Object.values(people).map((p) => p.ready));

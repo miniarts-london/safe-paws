@@ -15,8 +15,9 @@ export type Connection = "connecting" | "open" | "closed";
 const URL = process.env.NEXT_PUBLIC_BOARD_WS_URL ?? `ws://localhost:${DEFAULT_BOARD_PORT}`;
 
 /**
- * One socket per tab. The browser sends the session cookie with the
- * handshake, so the server knows who this is without the page saying so.
+ * One socket per tab. The page fetches its sign-in token from the website
+ * and hands it to the board server in the handshake, because the board
+ * server may be on another domain that never sees the website's cookie.
  * Every (re)connect gets a full snapshot back, so a dropped connection
  * never leaves a stale board or a missing notification behind.
  */
@@ -31,14 +32,27 @@ export function useBoardSocket() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
 
-    const connect = () => {
+    const retryLater = () => {
+      if (!disposed) timer = setTimeout(connect, Math.min(8000, 500 * 2 ** attempt++));
+    };
+
+    const connect = async () => {
       setStatus("connecting");
-      const ws = new WebSocket(URL);
+      let token: string;
+      try {
+        const res = await fetch("/api/session/socket-token", { cache: "no-store" });
+        if (res.status === 401) return toLogin();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        token = ((await res.json()) as { token: string }).token;
+      } catch {
+        setStatus("closed");
+        return retryLater();
+      }
+      if (disposed) return;
+      const ws = new WebSocket(URL, ["safe-paws-web", `bearer.${token}`]);
       wsRef.current = ws;
-      let opened = false;
 
       ws.onopen = () => {
-        opened = true;
         attempt = 0;
         setStatus("open");
       };
@@ -80,22 +94,13 @@ export function useBoardSocket() {
           return;
         }
         setStatus("closed");
-        const retry = () => {
-          if (!disposed) timer = setTimeout(connect, Math.min(8000, 500 * 2 ** attempt++));
-        };
-        // A handshake refused for a missing or expired cookie never opens, and browsers
-        // don't expose the 401. Ask the app whether we're still signed in before retrying.
-        if (!opened) {
-          fetch("/api/session", { cache: "no-store" })
-            .then((r) => (r.status === 401 ? toLogin() : retry()))
-            .catch(retry);
-          return;
-        }
-        retry();
+        // A refused handshake never opens, and browsers don't expose the 401. The next
+        // attempt fetches a fresh token first, which sends us to sign in if we've been signed out.
+        retryLater();
       };
     };
 
-    connect();
+    void connect();
     return () => {
       disposed = true;
       clearTimeout(timer);

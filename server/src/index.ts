@@ -40,21 +40,34 @@ import {
 const port = Number(process.env.BOARD_PORT ?? process.env.PORT ?? DEFAULT_BOARD_PORT);
 
 /**
- * Pages allowed to open a board connection. Browsers send cookies with
- * WebSocket handshakes from any site, so without this check another website
- * could open a socket as whoever is signed in (cross-site WebSocket hijacking).
+ * Pages allowed to open a board connection from a browser. Without this check
+ * another website could open a socket as whoever is signed in (cross-site
+ * WebSocket hijacking). Trailing slashes are ignored, since browsers never send one.
  */
 const allowedOrigins = new Set(
-  (process.env.BOARD_ALLOWED_ORIGINS ?? "http://localhost:3000,http://127.0.0.1:3000").split(",").map((o) => o.trim()),
+  (process.env.BOARD_ALLOWED_ORIGINS ?? "http://localhost:3000,http://127.0.0.1:3000")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter(Boolean),
 );
 
 type AuthedRequest = IncomingMessage & { session?: Session; client?: ClientKind };
 
-/** Browsers sign in with a cookie; the mobile app sends a Bearer token. */
 type ClientKind = "web" | "app";
 
-/** Subprotocol the app asks for. Its token rides alongside as `bearer.<token>`. */
+/**
+ * Subprotocols. Both send their token alongside as `bearer.<token>`:
+ * - the mobile app asks for `safe-paws`;
+ * - the website asks for `safe-paws-web`. When the board server is on another
+ *   domain (Vercel + Railway), the browser won't send the website's cookie,
+ *   so the page fetches its token from /api/session/socket-token instead.
+ * A cookie still works when both are on one domain (local development).
+ */
 const APP_PROTOCOL = "safe-paws";
+const WEB_PROTOCOL = "safe-paws-web";
+
+const requestedProtocols = (req: IncomingMessage) =>
+  (req.headers["sec-websocket-protocol"] ?? "").split(",").map((p) => p.trim());
 
 /**
  * The app's token, from an Authorization header (native) or a `bearer.<token>`
@@ -64,22 +77,23 @@ const APP_PROTOCOL = "safe-paws";
 function bearerToken(req: IncomingMessage) {
   const fromHeader = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
   if (fromHeader) return fromHeader;
-  const protocols = (req.headers["sec-websocket-protocol"] ?? "").split(",").map((p) => p.trim());
-  return protocols.find((p) => p.startsWith("bearer."))?.slice("bearer.".length);
+  return requestedProtocols(req).find((p) => p.startsWith("bearer."))?.slice("bearer.".length);
 }
 
 // Attached to an HTTP server below, which starts listening only once the board has loaded.
 const wss = new WebSocketServer({
   noServer: true,
   maxPayload: 64 * 1024,
-  // Agree on the app protocol, never echo the token back.
-  handleProtocols: (protocols) => (protocols.has(APP_PROTOCOL) ? APP_PROTOCOL : false),
+  // Agree on the app or web protocol, never echo the token back.
+  handleProtocols: (protocols) => (protocols.has(WEB_PROTOCOL) ? WEB_PROTOCOL : protocols.has(APP_PROTOCOL) ? APP_PROTOCOL : false),
   verifyClient: ({ req, origin }: { req: AuthedRequest; origin: string }, done) => {
-    // The app: a browser page can't set this header on a WebSocket, so there's no
-    // cross-site risk to check for here.
+    // A token (app, or website on another domain), else the website's cookie.
     const bearer = bearerToken(req);
-    let client: ClientKind = "app";
+    const fromWebsite = requestedProtocols(req).includes(WEB_PROTOCOL);
+    let client: ClientKind = fromWebsite ? "web" : "app";
     let session = bearer ? verifySessionToken(bearer) : null;
+    // A page can only get a token from our own website, but check where it's running anyway.
+    if (bearer && fromWebsite && !allowedOrigins.has(origin)) return done(false, 403, "Origin not allowed");
     if (!bearer) {
       // Browsers: cookies ride along on handshakes from any site, so the page must be one of ours.
       if (!allowedOrigins.has(origin)) return done(false, 403, "Origin not allowed");
