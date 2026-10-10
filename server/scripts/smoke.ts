@@ -172,10 +172,14 @@ async function members(people: Record<string, ReturnType<typeof connect>>) {
   await db.query(
     "insert into users (id, name, role, title, email, password_hash) values ('smoke-aya', 'Aya', 'member', 'Driver, Smouha', 'aya@example.com', 'x')",
   );
+  await db.query(
+    "insert into users (id, name, role, title, email, password_hash) values ('smoke-omar', 'Omar', 'member', 'New member', 'omar@example.com', 'x')",
+  );
   await db.end();
 
   const aya = connect("smoke-aya");
-  await aya.ready;
+  const omar = connect("smoke-omar");
+  await Promise.all([aya.ready, omar.ready]);
   await new Promise((r) => setTimeout(r, 300));
   const sendAs = (p: ReturnType<typeof connect>, msg: object) => p.ws.send(JSON.stringify(msg));
   const errors = (p: ReturnType<typeof connect>) => p.inbox.flatMap((m) => (m.type === "error" ? [m.message] : []));
@@ -195,6 +199,28 @@ async function members(people: Record<string, ReturnType<typeof connect>>) {
   const zeinaStayed = !aya.inbox.some((m) => m.type === "board.patch" && m.patch.columns.adopted?.includes("zeina"));
   const karimRefused = errors(people.karim).includes("Only coordinators can review new members.");
 
+  // Members can like and offer to adopt or sponsor; coordinators hear about offers.
+  sendAs(aya, { type: "animal.like", animalId: "zeina", like: true });
+  sendAs(aya, { type: "animal.request", animalId: "zeina", kind: "adopt", message: "We have a garden and another calm dog." });
+  sendAs(aya, { type: "animal.request", animalId: "zeina", kind: "adopt", message: "again" });
+  sendAs(aya, { type: "animal.request", animalId: "simsim", kind: "adopt", message: "" });
+  await new Promise((r) => setTimeout(r, 400));
+  const zeina = aya.inbox.flatMap((m) => (m.type === "board.patch" ? m.patch.animals.filter((a) => a.id === "zeina") : [])).at(-1);
+  const liked = zeina?.likes.includes("smoke-aya") ?? false;
+  const requested = zeina?.requests.some((q) => q.userId === "smoke-aya" && q.kind === "adopt") ?? false;
+  const duplicateRefused = errors(aya).some((e) => e.startsWith("You've already offered to adopt Zeina"));
+  const notReadyRefused = errors(aya).some((e) => e.startsWith("Simsim isn't ready for adoption yet"));
+  const monaTold = people.mona.inbox.some(
+    (m) => m.type === "notification" && m.notification.kind === "request" && m.notification.text.startsWith("Aya would like to adopt Zeina"),
+  );
+  const karimNotTold = !people.karim.inbox.some((m) => m.type === "notification" && m.notification.kind === "request");
+  // Offers carry personal messages: other members don't receive them, staff do.
+  const lastZeina = (p: ReturnType<typeof connect>) =>
+    p.inbox.flatMap((m) => (m.type === "board.patch" ? m.patch.animals.filter((a) => a.id === "zeina") : [])).at(-1);
+  const otherMemberDoesntSee = lastZeina(omar)?.requests.length === 0;
+  const staffSee = lastZeina(people.kaori)?.requests.some((q) => q.message.includes("garden")) ?? false;
+  omar.ws.close();
+
   sendAs(people.mona, { type: "member.approve", userId: "smoke-aya", role: "fosterer", title: "Foster carer, Smouha" });
   await new Promise((r) => setTimeout(r, 400));
   const promoted = aya.inbox.some((m) => m.type === "user.upsert" && m.user.id === "smoke-aya" && m.user.role === "fosterer");
@@ -204,7 +230,11 @@ async function members(people: Record<string, ReturnType<typeof connect>>) {
   const canPost = aya.inbox.some((m) => m.type === "board.patch" && m.patch.animals.some((a) => a.notes.some((n) => n.authorId === "smoke-aya")));
   aya.ws.close();
 
-  const result = { welcomed, introduced, monaSees, kaoriSeesNoList, refusedMove, followed, zeinaStayed, karimRefused, promoted, listCleared, canPost };
+  const result = {
+    welcomed, introduced, monaSees, kaoriSeesNoList, refusedMove, followed, zeinaStayed, karimRefused,
+    liked, requested, duplicateRefused, notReadyRefused, monaTold, karimNotTold, otherMemberDoesntSee, staffSee,
+    promoted, listCleared, canPost,
+  };
   console.log("members:", result);
   return Object.values(result).every(Boolean);
 }

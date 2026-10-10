@@ -6,6 +6,9 @@ import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
+/** Demo buttons in development builds only, unless EXPO_PUBLIC_SHOW_DEMO_ACCOUNTS says otherwise. */
+const SHOW_DEMOS = process.env.EXPO_PUBLIC_SHOW_DEMO_ACCOUNTS ? process.env.EXPO_PUBLIC_SHOW_DEMO_ACCOUNTS === "true" : __DEV__;
+
 export default function Login() {
   const t = useTheme();
   const { signIn } = useAuth();
@@ -29,7 +32,7 @@ export default function Login() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={[styles.card, { backgroundColor: t.card, borderColor: t.rule }]}>
             <Text style={[styles.title, { color: t.ink }]} accessibilityRole="header">
-              Safe Paws
+              Egypt Animal SOS
             </Text>
             <Text style={[styles.lede, { color: t.ink2 }]}>
               Sign in to see the animals in care and get updates on the ones you follow.
@@ -67,29 +70,31 @@ export default function Login() {
             )}
             <Button label="Sign in" variant="primary" busy={busy} onPress={() => submit()} style={{ marginTop: 8 }} />
 
-            <View style={[styles.demo, { borderTopColor: t.rule }]}>
-              <Text style={[styles.demoTitle, { color: t.ink }]}>Try it with a demo account</Text>
-              <Text style={[styles.demoHint, { color: t.ink2 }]}>
-                Sign in as someone else on the web app at the same time to watch updates arrive here. Demo password:{" "}
-                {DEMO_PASSWORD}
-              </Text>
-              {demoLogins.map((d) => {
-                const user = seedUsers.find((u) => u.id === d.userId)!;
-                return (
-                  <Pressable
-                    key={d.email}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Sign in as ${user.name}, ${user.title}`}
-                    disabled={busy}
-                    onPress={() => submit(d.email, DEMO_PASSWORD)}
-                    style={({ pressed }) => [styles.demoBtn, { borderColor: t.rule, opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <Text style={[styles.demoName, { color: t.ink }]}>{user.name}</Text>
-                    <Text style={[styles.demoRole, { color: t.ink2 }]}>{user.title}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {SHOW_DEMOS && (
+              <View style={[styles.demo, { borderTopColor: t.rule }]}>
+                <Text style={[styles.demoTitle, { color: t.ink }]}>Try it with a demo account</Text>
+                <Text style={[styles.demoHint, { color: t.ink2 }]}>
+                  Sign in as someone else on the web app at the same time to watch updates arrive here. Demo password:{" "}
+                  {DEMO_PASSWORD}
+                </Text>
+                {demoLogins.map((d) => {
+                  const user = seedUsers.find((u) => u.id === d.userId)!;
+                  return (
+                    <Pressable
+                      key={d.email}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Sign in as ${user.name}, ${user.title}`}
+                      disabled={busy}
+                      onPress={() => submit(d.email, DEMO_PASSWORD)}
+                      style={({ pressed }) => [styles.demoBtn, { borderColor: t.rule, opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Text style={[styles.demoName, { color: t.ink }]}>{user.name}</Text>
+                      <Text style={[styles.demoRole, { color: t.ink2 }]}>{user.title}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

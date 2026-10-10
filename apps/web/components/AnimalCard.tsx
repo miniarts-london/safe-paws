@@ -30,7 +30,7 @@ export function AnimalAvatar({ animal, size = 40 }: { animal: Animal; size?: num
         fontSize: size * 0.42,
         fontWeight: 700,
         borderRadius: "12px", // a string, so MUI doesn't multiply it by the theme radius
-        color: "background.paper",
+        color: animal.species === "dog" ? "species.onDog" : "species.onCat",
         bgcolor: animal.species === "dog" ? "species.dog" : "species.cat",
       }}
     >

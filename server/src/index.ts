@@ -6,6 +6,9 @@ import {
   CLOSE_SESSION_ENDED,
   DEFAULT_BOARD_PORT,
   type BoardClientMessage,
+  type Animal,
+  type Board,
+  type BoardPatch,
   type BoardServerMessage,
   type Notification,
   type StageId,
@@ -13,8 +16,8 @@ import {
   isStaff,
 } from "@safe-paws/shared/protocol";
 import { readCookie, SESSION_COOKIE, verifySessionToken, type Session } from "@safe-paws/shared/session";
-import { animalDetailsSchema, approveSchema } from "@safe-paws/shared/schemas";
-import { notifyCreate, notifyMove, notifyNote, notifyUpdate } from "./notify";
+import { animalDetailsSchema, approveSchema, requestSchema } from "@safe-paws/shared/schemas";
+import { notifyCreate, notifyMove, notifyNote, notifyRequest, notifyUpdate } from "./notify";
 import { registerPushToken, sendPush, unregisterPushToken } from "./push";
 import {
   BoardError,
@@ -32,8 +35,11 @@ import {
   markRead,
   moveAnimal,
   notificationsFor,
+  requestAnimal,
   setFollow,
+  setLiked,
   updateAnimal,
+  removeAnimal,
 } from "./state";
 
 // Hosts such as Render, Railway and Fly tell the server which port to use in PORT.
@@ -145,6 +151,29 @@ function broadcast(msg: BoardServerMessage) {
   for (const ws of wss.clients) send(ws, msg);
 }
 
+/**
+ * Offers to adopt or sponsor carry people's messages, often with a phone
+ * number, so only staff receive everyone's, and only coordinators (who get in
+ * touch) receive their emails. Members get just their own.
+ */
+function forViewer(animal: Animal, userId: string): Animal {
+  const role = findUser(userId)?.role;
+  if (role === "coordinator" || animal.requests.length === 0) return animal;
+  if (isStaff(role)) return { ...animal, requests: animal.requests.map(({ email: _email, ...r }) => r) };
+  return { ...animal, requests: animal.requests.filter((r) => r.userId === userId) };
+}
+const boardFor = (board: Board, userId: string): Board => ({
+  ...board,
+  animals: Object.fromEntries(Object.entries(board.animals).map(([id, a]) => [id, forViewer(a, userId)])),
+});
+
+/** A board change for everyone, each person getting their own view of it. */
+function broadcastPatch(patch: BoardPatch) {
+  for (const ws of wss.clients as Set<Client>) {
+    send(ws, { type: "board.patch", patch: { ...patch, animals: patch.animals.map((a) => forViewer(a, ws.userId)) } });
+  }
+}
+
 /** Coordinators keep a live list of who signed up. */
 async function sendMembers(to: "coordinators" | Client) {
   const msg: BoardServerMessage = { type: "members", members: await membersList() };
@@ -160,7 +189,7 @@ function introduce(user: User) {
 
 /** Members can look and follow; changing the board is for staff. */
 const STAFF_ONLY = new Set<BoardClientMessage["type"]>(["animal.move", "animal.note", "animal.create", "animal.update"]);
-const COORDINATOR_ONLY = new Set<BoardClientMessage["type"]>(["member.approve", "member.keep"]);
+const COORDINATOR_ONLY = new Set<BoardClientMessage["type"]>(["member.approve", "member.keep", "animal.delete"]);
 
 /**
  * Changes run one at a time, in arrival order. Each one reads the board,
@@ -189,13 +218,13 @@ async function handle(ws: Client, msg: BoardClientMessage) {
   switch (msg.type) {
     case "animal.move": {
       const { from, animal, patch } = await moveAnimal(msg.animalId, msg.toStage as StageId, msg.toIndex, actor.id);
-      broadcast({ type: "board.patch", patch });
+      broadcastPatch(patch);
       (await createNotifications(notifyMove(animal, from, actor, users), "moved", animal.id, actor.id)).forEach(deliver);
       return;
     }
     case "animal.note": {
       const { animal, text, patch } = await addNote(msg.animalId, msg.text, actor.id);
-      broadcast({ type: "board.patch", patch });
+      broadcastPatch(patch);
       (await createNotifications(notifyNote(animal, text, actor, users), "note", animal.id, actor.id)).forEach(deliver);
       return;
     }
@@ -206,18 +235,33 @@ async function handle(ws: Client, msg: BoardClientMessage) {
       if (!parsed.success) throw new BoardError(parsed.error.issues[0]?.message ?? "Check the animal's details.");
       if (msg.type === "animal.create") {
         const { animal, patch } = await createAnimal(msg.animalId, parsed.data, actor.id);
-        broadcast({ type: "board.patch", patch });
+        broadcastPatch(patch);
         (await createNotifications(notifyCreate(animal, actor, users), "registered", animal.id, actor.id)).forEach(deliver);
       } else {
         const { animal, patch, addedPhotos, addedVideos } = await updateAnimal(msg.animalId, parsed.data, actor.id);
-        broadcast({ type: "board.patch", patch });
+        broadcastPatch(patch);
         (await createNotifications(notifyUpdate(animal, actor, users, addedPhotos, addedVideos), "details", animal.id, actor.id)).forEach(deliver);
       }
       return;
     }
-    case "animal.follow":
-      broadcast({ type: "board.patch", patch: await setFollow(msg.animalId, actor.id, msg.follow) });
+    case "animal.delete":
+      broadcastPatch((await removeAnimal(msg.animalId)).patch);
       return;
+    case "animal.follow":
+      broadcastPatch(await setFollow(msg.animalId, actor.id, msg.follow));
+      return;
+    case "animal.like":
+      broadcastPatch(await setLiked(msg.animalId, actor.id, msg.like === true));
+      return;
+    case "animal.request": {
+      const parsed = requestSchema.safeParse(msg);
+      if (!parsed.success) throw new BoardError(parsed.error.issues[0]?.message ?? "Check your request.");
+      const { kind, message } = parsed.data;
+      const { animal, patch } = await requestAnimal(msg.animalId, actor.id, kind, message);
+      broadcastPatch(patch);
+      (await createNotifications(notifyRequest(animal, actor, kind, message, users), "request", animal.id, actor.id)).forEach(deliver);
+      return;
+    }
     case "push.register":
       if (!(await registerPushToken(actor.id, msg.token))) throw new BoardError("That doesn't look like a push token.");
       return;
@@ -229,6 +273,12 @@ async function handle(ws: Client, msg: BoardClientMessage) {
       if (!parsed.success) throw new BoardError(parsed.error.issues[0]?.message ?? "Check the role and title.");
       const { userId, role, title } = parsed.data;
       introduce(await approve(userId, role, title, actor.id));
+      // Now staff, they can see everyone's offers: send them the full board.
+      for (const ws of sockets.get(userId) ?? []) {
+        notificationsFor(userId)
+          .then((notifications) => send(ws, { type: "welcome", userId, users: getUsers(), board: getBoard(), notifications }))
+          .catch(console.error);
+      }
       return;
     }
     case "member.keep":
@@ -259,7 +309,7 @@ wss.on("connection", (socket: WebSocket, req: AuthedRequest) => {
   // Full snapshot on every connect, which is also how reconnects catch up on anything missed.
   notificationsFor(ws.userId)
     .then(async (notifications) => {
-      send(ws, { type: "welcome", userId: ws.userId, users: getUsers(), board: getBoard(), notifications });
+      send(ws, { type: "welcome", userId: ws.userId, users: getUsers(), board: boardFor(getBoard(), ws.userId), notifications });
       if (findUser(ws.userId)?.role === "coordinator") await sendMembers(ws);
     })
     .catch((err) => {

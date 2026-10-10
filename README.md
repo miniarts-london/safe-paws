@@ -112,6 +112,21 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 - New sign-ups are added to the running board server the first time they connect, and coordinators' lists update live. Emails are only ever sent to coordinators.
 - The roles are in `packages/shared/src/protocol.ts` (`STAFF_ROLES`, `isStaff`), and the database change is `packages/db/migrations/002_members.sql`.
 
+### Home page
+
+`/` is a public page anyone can see without signing in: "Helping abandoned Dogs of Egypt", the donation message, and two buttons. **Donate** goes to `/donate`, a public page with the bank transfer and PayPal details (edit them in `apps/web/lib/donation.ts`). **Meet our animals** goes to the Animals page, via sign-in for visitors who aren't signed in.
+
+### The Animals page
+
+`/animals` (the **Animals** link in the header) lists every animal with its details for everyone signed in, members and staff alike. It's read-only: nothing here changes an animal's record. Search by name or area, and filter by stage or dogs and cats.
+
+- **Click any card** (or its name, with the keyboard) to open that animal's page at `/animals/<id>`: every photo and video, the facts, where it is on the way from street to home, followers and likes, and all updates. The same buttons are there too.
+- Each card shows its first photo (at most 200px tall) and how many updates there are; the updates open in a popup.
+- **Follow** works as on the board: you get notified about that animal.
+- **Like** (the heart) is a simple count, updated live for everyone.
+- **Adopt or sponsor:** adopting is offered once an animal is *Ready for adoption*; sponsoring until it has a home. The person can add a message (up to 500 characters). Every coordinator is notified ("Aya would like to adopt Zeina: …"), the person starts following the animal, and the offer shows for staff under **Offers to help**, a section that starts closed (on the animal's page and in its panel on the board). Each person can offer once of each kind per animal.
+- Members only see their own offers; offers are stored in `animal_requests` and likes in `animal_likes` (`packages/db/migrations/003_likes_and_requests.sql`).
+
 ### Registering an animal
 
 **Register an animal** (top bar on desktop, the round button on phones) opens a form for name, species, sex, age (a number and weeks/months/years, with an "estimate" tick), neutered (yes / no / not sure), weight (optional), where they were found, notes, and photos and videos. **Edit details** in any animal's panel opens the same form pre-filled.
@@ -143,6 +158,7 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 | `notes` | updates posted on an animal |
 | `animal_followers` | who follows which animal |
 | `uploads`, `animal_media` | each photo or video, and which animal shows it, in order |
+| `animal_likes`, `animal_requests` | likes, and offers to adopt or sponsor with the person's message |
 | `notifications` | one row per person per message, with a read flag |
 | `push_tokens` | each phone's Expo push token |
 
@@ -168,6 +184,8 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 - [ ] Rate-limit sign-ups and sign-ins, and confirm email addresses
 - [ ] Sign up from the mobile app (for now the app's members sign up on the website)
 - [ ] Let coordinators change or remove staff roles, not just grant them
+- [ ] A coordinator's list of open adopt and sponsor offers, with a "done" button
+- [ ] The Animals page in the mobile app
 - [ ] Register animals and take photos from the mobile app (expo-image-picker)
 - [ ] Delete uploads that were removed from the form before saving
 - [ ] Queue changes made on a weak connection and retry them

@@ -7,6 +7,14 @@ const scrypt = promisify(scryptCb) as (pw: BinaryLike, salt: BinaryLike, len: nu
 
 export { DEMO_PASSWORD };
 
+/**
+ * Demo sign-in buttons: on in development, off on the live site, where the
+ * demo accounts don't exist (and their password would be public if they did).
+ * Set SHOW_DEMO_ACCOUNTS=true to show them anyway, e.g. on a portfolio copy.
+ */
+export const showDemoAccounts = () =>
+  process.env.SHOW_DEMO_ACCOUNTS ? process.env.SHOW_DEMO_ACCOUNTS === "true" : process.env.NODE_ENV !== "production";
+
 /** Shown on the login page; the accounts themselves live in the users table. */
 export const demoAccounts = demoLogins.map((a) => {
   const user = seedUsers.find((u) => u.id === a.userId)!;

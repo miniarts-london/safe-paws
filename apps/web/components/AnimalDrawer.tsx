@@ -21,6 +21,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useAnimalForm } from "@/lib/formStore";
 import { useSend } from "@/lib/useBoardSocket";
 import { AnimalAvatar } from "./AnimalCard";
+import { OffersAccordion } from "./OffersAccordion";
 
 /** Photos and videos, newest first. Photos open full size in a new tab. */
 function Gallery({ media }: { media: Media[] }) {
@@ -170,7 +171,11 @@ function Panel({ animal, onClose }: { animal: Animal; onClose: () => void }) {
         {animal.followers.length === 0
           ? "Nobody follows this animal yet."
           : `Followed by ${animal.followers.map(name).join(", ")}.`}
+        {animal.likes.length > 0 && ` ${animal.likes.length} ${animal.likes.length === 1 ? "like" : "likes"}.`}
       </Typography>
+
+      {/* Offers to adopt or sponsor, for staff to follow up. Members only see their own, on the Animals page. */}
+      {canEdit && animal.requests.length > 0 && <OffersAccordion animal={animal} />}
 
       {canEdit && (
         <Box component="form" noValidate onSubmit={post}>

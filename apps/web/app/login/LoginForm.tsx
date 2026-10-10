@@ -103,36 +103,40 @@ export function LoginForm({ demos, demoPassword }: { demos: Demo[]; demoPassword
         </Link>
       </Typography>
 
-      <Divider />
+      {demos.length > 0 && (
+        <>
+          <Divider />
 
-      <Stack spacing={1.5} component="section" aria-labelledby="demo-title">
-        <Typography id="demo-title" variant="h2" component="h2">
-          Try it with a demo account
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          To watch changes and notifications arrive live, sign in as one person here and as another in a private window
-          (both windows of the same browser share one sign-in). Demo password: <code>{demoPassword}</code>
-        </Typography>
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-          {demos.map((d) => (
-            <Button
-              key={d.email}
-              variant="outlined"
-              color="inherit"
-              disabled={pending}
-              onClick={() => signInAs(d.email)}
-              sx={{ justifyContent: "flex-start", textAlign: "left", py: 1, borderColor: "divider" }}
-            >
-              <Stack>
-                <Typography sx={{ fontWeight: 600 }}>{d.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {d.title}
-                </Typography>
-              </Stack>
-            </Button>
-          ))}
-        </Box>
-      </Stack>
+          <Stack spacing={1.5} component="section" aria-labelledby="demo-title">
+            <Typography id="demo-title" variant="h2" component="h2">
+              Try it with a demo account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              To watch changes and notifications arrive live, sign in as one person here and as another in a private window
+              (both windows of the same browser share one sign-in). Demo password: <code>{demoPassword}</code>
+            </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+              {demos.map((d) => (
+                <Button
+                  key={d.email}
+                  variant="outlined"
+                  color="inherit"
+                  disabled={pending}
+                  onClick={() => signInAs(d.email)}
+                  sx={{ justifyContent: "flex-start", textAlign: "left", py: 1, borderColor: "divider" }}
+                >
+                  <Stack>
+                    <Typography sx={{ fontWeight: 600 }}>{d.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {d.title}
+                    </Typography>
+                  </Stack>
+                </Button>
+              ))}
+            </Box>
+          </Stack>
+        </>
+      )}
     </Stack>
   );
 }

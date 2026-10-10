@@ -21,6 +21,12 @@ export async function getUser(id: string): Promise<User | null> {
   return rows[0] ?? null;
 }
 
+/** For coordinators to get in touch, e.g. about an offer to adopt. */
+export async function getUserEmail(id: string): Promise<string | null> {
+  const { rows } = await pool().query<{ email: string }>("select email from users where id = $1", [id]);
+  return rows[0]?.email ?? null;
+}
+
 /**
  * Signs someone up as a member (view only). Returns null when the email is
  * already registered, so the caller can say so without a second query racing it.

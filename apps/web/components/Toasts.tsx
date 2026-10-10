@@ -5,7 +5,7 @@ import SnackbarContent from "@mui/material/SnackbarContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import ButtonBase from "@mui/material/ButtonBase";
-import { useBoard } from "@safe-paws/shared/store";
+import { openNotification, useBoard } from "@safe-paws/shared/store";
 
 /**
  * New notifications pop up one at a time; the next one waits until the
@@ -31,7 +31,7 @@ export function Toasts({ bottomOffset = 0 }: { bottomOffset?: number }) {
         message={
           <ButtonBase
             onClick={() => {
-              useBoard.getState().openAnimal(toast.notification.animalId);
+              openNotification(toast.notification);
               dismiss(toast.key);
             }}
             sx={{ font: "inherit", textAlign: "left", lineHeight: 1.5 }}

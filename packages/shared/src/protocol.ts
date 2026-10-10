@@ -75,11 +75,26 @@ export type AnimalDetails = {
   media: Media[];
 };
 
+/** Someone offering to adopt or sponsor an animal. Coordinators are told and follow it up. */
+export type RequestKind = "adopt" | "sponsor";
+export type AnimalRequest = {
+  userId: string;
+  kind: RequestKind;
+  message: string;
+  at: number;
+  /** How to reach them. Only coordinators receive it (and the person themselves). */
+  email?: string;
+};
+
 export type Animal = AnimalDetails & {
   id: string;
   stage: StageId;
   /** People who asked to hear about this animal (sponsors, fosterers, anyone). */
   followers: string[];
+  /** People who liked this animal. */
+  likes: string[];
+  /** Offers to adopt or sponsor, oldest first. */
+  requests: AnimalRequest[];
   notes: Note[];
   updatedAt: number;
   updatedBy: string;
@@ -97,7 +112,7 @@ export type Columns = Record<StageId, string[]>;
 
 export type Board = { version: number; columns: Columns; animals: Record<string, Animal> };
 
-export type NotificationKind = "moved" | "note" | "registered" | "details";
+export type NotificationKind = "moved" | "note" | "registered" | "details" | "request";
 
 export type Notification = {
   id: number;
@@ -117,9 +132,15 @@ export type BoardClientMessage =
   | { type: "animal.move"; animalId: string; toStage: StageId; toIndex: number }
   | { type: "animal.note"; animalId: string; text: string }
   | { type: "animal.follow"; animalId: string; follow: boolean }
+  /** Anyone signed in, members included. */
+  | { type: "animal.like"; animalId: string; like: boolean }
+  /** Anyone signed in: offer to adopt (once it's ready for adoption) or sponsor. Coordinators are notified. */
+  | { type: "animal.request"; animalId: string; kind: RequestKind; message: string }
   /** `animalId` comes from the client (a UUID), so the form can open the new animal straight away. */
   | { type: "animal.create"; animalId: string; details: AnimalDetailsInput }
   | { type: "animal.update"; animalId: string; details: AnimalDetailsInput }
+  /** Coordinators only: removes the animal with its photos list, updates, likes, offers and notifications. */
+  | { type: "animal.delete"; animalId: string }
   | { type: "notifications.read"; ids: number[] | "all" }
   /** Coordinators only: make a member staff, with the role and title they'll have. */
   | { type: "member.approve"; userId: string; role: StaffRole; title: string }
@@ -140,6 +161,8 @@ export type BoardPatch = {
   version: number;
   columns: Partial<Columns>;
   animals: Animal[];
+  /** Animals that were deleted. */
+  removed?: string[];
 };
 
 export type BoardServerMessage =

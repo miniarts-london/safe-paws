@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/site";
 import BoardApp from "@/components/BoardClient";
 import { getUser } from "@safe-paws/db";
 import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "Rescue board",
+  title: `Rescue board · ${SITE_NAME}`,
   description: "Track each rescued animal from street to home, with live updates for everyone involved.",
 };
 

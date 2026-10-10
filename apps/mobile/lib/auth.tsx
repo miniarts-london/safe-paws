@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
     } catch {
-      return `Can't reach Safe Paws at ${API_URL}. Check that npm run dev is running and your phone is on the same Wi-Fi.`;
+      return `Can't reach the server at ${API_URL}. Check that npm run dev is running and your phone is on the same Wi-Fi.`;
     }
     const json = await res.json().catch(() => ({}));
     if (!res.ok) return json.error ?? "Sign-in failed. Try again.";

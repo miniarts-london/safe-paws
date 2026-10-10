@@ -15,6 +15,8 @@ type BoardStore = {
   toasts: Toast[];
   /** Animal shown in the side panel. */
   openAnimalId: string | null;
+  /** Coordinators: the offer shown after clicking its notification (who, how to reach them, which animal). */
+  openOffer: { animalId: string; userId: string } | null;
   error: string | null;
 
   welcome: (userId: string, users: User[], board: Board, notifications: Notification[]) => void;
@@ -27,6 +29,7 @@ type BoardStore = {
   markRead: (ids: number[] | "all") => void;
   dismissToast: (key: number) => void;
   openAnimal: (id: string | null) => void;
+  showOffer: (offer: { animalId: string; userId: string } | null) => void;
   setError: (message: string | null) => void;
 };
 
@@ -40,6 +43,7 @@ export const useBoard = create<BoardStore>((set, get) => ({
   members: [],
   toasts: [],
   openAnimalId: null,
+  openOffer: null,
   error: null,
 
   welcome: (me, users, board, notifications) => set({ me, users, board, notifications, error: null }),
@@ -50,7 +54,16 @@ export const useBoard = create<BoardStore>((set, get) => ({
     if (!board || patch.version <= board.version) return;
     const animals = { ...board.animals };
     for (const a of patch.animals) animals[a.id] = a;
-    set({ board: { version: patch.version, columns: { ...board.columns, ...patch.columns }, animals } });
+    const removed = new Set(patch.removed ?? []);
+    for (const id of removed) delete animals[id];
+    set({
+      board: { version: patch.version, columns: { ...board.columns, ...patch.columns }, animals },
+      // The server deleted these with the animal; drop them here too, and close its panel if it was open.
+      ...(removed.size > 0 && {
+        notifications: get().notifications.filter((n) => !removed.has(n.animalId)),
+        openAnimalId: removed.has(get().openAnimalId ?? "") ? null : get().openAnimalId,
+      }),
+    });
   },
 
   upsertUser: (user) => {
@@ -80,6 +93,7 @@ export const useBoard = create<BoardStore>((set, get) => ({
 
   dismissToast: (key) => set({ toasts: get().toasts.filter((t) => t.key !== key) }),
   openAnimal: (id) => set({ openAnimalId: id }),
+  showOffer: (openOffer) => set({ openOffer }),
   setError: (error) => set({ error }),
 }));
 
@@ -87,6 +101,14 @@ export const useBoard = create<BoardStore>((set, get) => ({
 export const useMe = () => useBoard((s) => s.users.find((u) => u.id === s.me));
 
 /** Staff can change the board; members can look and follow. The server enforces the same rule. */
+/** Where a notification leads: an offer to help opens the offer; everything else opens the animal. */
+export function openNotification(n: Notification) {
+  const s = useBoard.getState();
+  if (n.kind === "request") s.showOffer({ animalId: n.animalId, userId: n.actorId });
+  else s.openAnimal(n.animalId);
+}
+
+export const useIsCoordinator = () => useBoard((s) => s.users.find((u) => u.id === s.me)?.role === "coordinator");
 export const useCanEdit = () => useBoard((s) => isStaff(s.users.find((u) => u.id === s.me)?.role));
 
 export const findStage = (columns: Columns, animalId: string): StageId | undefined =>

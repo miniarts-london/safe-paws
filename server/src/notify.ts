@@ -7,7 +7,7 @@
  * cares about the new stage), they get the single most useful message.
  */
 import { formatAge } from "@safe-paws/shared/format";
-import { stageLabel, type Animal, type Role, type StageId, type User } from "@safe-paws/shared/protocol";
+import { stageLabel, type Animal, type RequestKind, type Role, type StageId, type User } from "@safe-paws/shared/protocol";
 
 export type Outgoing = { userId: string; text: string };
 
@@ -107,6 +107,15 @@ export function notifyUpdate(animal: Animal, actor: User, users: User[], addedPh
       userId: u.id,
       text: `${actor.name} added ${parts.join(" and ")} of ${u.role === "sponsor" ? `${animal.name}, who you sponsor` : animal.name}.`,
     }));
+}
+
+/** Someone offered to adopt or sponsor: every coordinator is told, with the person's message. */
+export function notifyRequest(animal: Animal, actor: User, kind: RequestKind, message: string, users: User[]): Outgoing[] {
+  const offer = kind === "adopt" ? `would like to adopt ${animal.name}` : `would like to sponsor ${animal.name}`;
+  const note = message ? `: “${message.length > 90 ? message.slice(0, 87) + "…" : message}”` : ".";
+  return users
+    .filter((u) => u.id !== actor.id && u.role === "coordinator")
+    .map((u) => ({ userId: u.id, text: `${actor.name} ${offer}${note}` }));
 }
 
 function pronoun(animal: Animal) {

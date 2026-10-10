@@ -19,7 +19,7 @@ export const demoLogins = [
 
 const HOUR = 3_600_000;
 
-type Seed = Omit<Animal, "updatedAt" | "notes" | "media"> & { hoursAgo: number; notes?: [string, string, number][] };
+type Seed = Omit<Animal, "updatedAt" | "notes" | "media" | "likes" | "requests"> & { hoursAgo: number; notes?: [string, string, number][] };
 
 const est = (value: number, unit: AgeUnit): Age => ({ value, unit, estimated: true });
 
@@ -57,6 +57,8 @@ export function createSeedBoard(now = Date.now()): Board {
     animals[a.id] = {
       ...a,
       media: [],
+      likes: [],
+      requests: [],
       updatedAt: now - hoursAgo * HOUR,
       notes: notes.map(([authorId, text, h], i) => ({ id: `${a.id}-seed-${i}`, authorId, text, at: now - h * HOUR })),
     };

@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -16,6 +17,7 @@ import FormHelperText from "@mui/material/FormHelperText";
 import FormLabel from "@mui/material/FormLabel";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
+import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -24,7 +26,7 @@ import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import type { Animal } from "@safe-paws/shared/protocol";
 import { ABOUT_MAX, animalDetailsSchema, type AnimalDetailsForm } from "@safe-paws/shared/schemas";
-import { useBoard } from "@safe-paws/shared/store";
+import { useBoard, useIsCoordinator } from "@safe-paws/shared/store";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Control, type FieldPath } from "react-hook-form";
 import { useAnimalForm } from "@/lib/formStore";
@@ -74,46 +76,60 @@ export function AnimalFormDialog() {
   const [dirty, setDirty] = useState(false);
 
   const requestClose = () => (dirty ? setConfirmDiscard(true) : close());
+  const notice = useAnimalForm((s) => s.notice);
+  const clearNotice = () => useAnimalForm.getState().setNotice(null);
 
   return (
-    <Dialog
-      open={open}
-      onClose={requestClose}
-      fullScreen={fullScreen}
-      maxWidth="sm"
-      fullWidth
-      aria-labelledby="animal-form-title"
-      slotProps={{ transition: { onExited: () => setDirty(false) } }}
-    >
-      {open && (
-        <AnimalForm
-          // Fresh form state each time it opens, and per animal when editing.
-          key={form?.mode === "edit" ? form.animalId : "new"}
-          animal={animal}
-          onDirtyChange={setDirty}
-          onCancel={requestClose}
-          onDone={close}
-        />
-      )}
-      <Dialog open={confirmDiscard} onClose={() => setConfirmDiscard(false)} aria-labelledby="discard-title">
-        <DialogTitle id="discard-title">Discard your changes?</DialogTitle>
-        <DialogContent>
-          <Typography>What you&apos;ve entered in this form will be lost.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
-          <Button
-            color="error"
-            onClick={() => {
-              setConfirmDiscard(false);
-              close();
-            }}
-          >
-            Discard
-          </Button>
-        </DialogActions>
+    <>
+      <Snackbar
+        open={!!notice}
+        autoHideDuration={5000}
+        onClose={clearNotice}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={clearNotice}>
+          {notice}
+        </Alert>
+      </Snackbar>
+      <Dialog
+        open={open}
+        onClose={requestClose}
+        fullScreen={fullScreen}
+        maxWidth="sm"
+        fullWidth
+        aria-labelledby="animal-form-title"
+        slotProps={{ transition: { onExited: () => setDirty(false) } }}
+      >
+        {open && (
+          <AnimalForm
+            // Fresh form state each time it opens, and per animal when editing.
+            key={form?.mode === "edit" ? form.animalId : "new"}
+            animal={animal}
+            onDirtyChange={setDirty}
+            onCancel={requestClose}
+            onDone={close}
+          />
+        )}
+        <Dialog open={confirmDiscard} onClose={() => setConfirmDiscard(false)} aria-labelledby="discard-title">
+          <DialogTitle id="discard-title">Discard your changes?</DialogTitle>
+          <DialogContent>
+            <Typography>What you&apos;ve entered in this form will be lost.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+            <Button
+              color="error"
+              onClick={() => {
+                setConfirmDiscard(false);
+                close();
+              }}
+            >
+              Discard
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Dialog>
-    </Dialog>
+    </>
   );
 }
 
@@ -134,6 +150,8 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
     [animals],
   );
   const [uploading, setUploading] = useState(0);
+  const canDelete = useIsCoordinator() && !!animal;
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const onBusyChange = useCallback((n: number) => setUploading(n), []);
 
   const { control, handleSubmit, formState, setError } = useForm<AnimalDetailsForm>({
@@ -162,16 +180,30 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
     const animalId = crypto.randomUUID();
     if (send({ type: "animal.create", animalId, details })) {
       onDone();
-      // Open the new animal as soon as the board confirms it.
+      // Confirm once the board has it (it appears at the top of Reported). The panel stays closed.
       const unsub = useBoard.subscribe((s) => {
         if (s.board?.animals[animalId]) {
           unsub();
-          s.openAnimal(animalId);
+          useAnimalForm.getState().setNotice(`${details.name} is on the board, at the top of Reported.`);
         }
       });
       setTimeout(unsub, 5000);
     }
   });
+
+  const remove = () => {
+    if (!animal || !send({ type: "animal.delete", animalId: animal.id })) return;
+    setConfirmDelete(false);
+    onDone();
+    // Confirm once the server has removed it; if it refuses, the board's error message shows instead.
+    const unsub = useBoard.subscribe((s) => {
+      if (s.board && !s.board.animals[animal.id]) {
+        unsub();
+        useAnimalForm.getState().setNotice(`${animal.name} was deleted.`);
+      }
+    });
+    setTimeout(unsub, 5000);
+  };
 
   const title = animal ? `Edit ${animal.name}'s details` : "Register an animal";
   const err = formState.errors;
@@ -354,6 +386,16 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
+        {canDelete && (
+          <Button
+            color="error"
+            startIcon={<DeleteOutlined />}
+            onClick={() => setConfirmDelete(true)}
+            sx={{ mr: "auto" }}
+          >
+            Delete
+          </Button>
+        )}
         <Button onClick={onCancel} color="inherit">
           Cancel
         </Button>
@@ -367,6 +409,26 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
                 : "Register"}
         </Button>
       </DialogActions>
+
+      {animal && (
+        <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} aria-labelledby="delete-title" aria-describedby="delete-text">
+          <DialogTitle id="delete-title">Delete {animal.name}?</DialogTitle>
+          <DialogContent>
+            <Typography id="delete-text">
+              {animal.name} will be removed from the board for everyone, with all their updates, likes and offers to
+              help. This can&apos;t be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDelete(false)} autoFocus>
+              Keep {animal.name}
+            </Button>
+            <Button color="error" variant="contained" onClick={remove}>
+              Delete {animal.name}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 }

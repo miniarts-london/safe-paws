@@ -1,27 +1,34 @@
 "use client";
 
 import AddIcon from "@mui/icons-material/Add";
+import Logout from "@mui/icons-material/Logout";
 import Alert from "@mui/material/Alert";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { isStaff, ROLE_LABELS, type User } from "@safe-paws/shared/protocol";
+import NextLink from "next/link";
 import { useBoard } from "@safe-paws/shared/store";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/login/actions";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
 import { SendContext, useBoardSocket, type Connection } from "@/lib/useBoardSocket";
 import { useAnimalForm } from "@/lib/formStore";
+import { SITE_NAME } from "@/lib/site";
+import { AnimalDetail } from "./AnimalDetail";
+import { AnimalDirectory } from "./AnimalDirectory";
 import { AnimalDrawer } from "./AnimalDrawer";
 import { AnimalFormDialog } from "./AnimalForm";
 import { Bell } from "./Bell";
 import { MembersButton } from "./MembersDialog";
+import { OfferContactDialog } from "./OfferContactDialog";
 import { Board } from "./Board";
 import { MOBILE_NAV_HEIGHT, MobileBoard } from "./MobileBoard";
 import { Toasts } from "./Toasts";
@@ -32,7 +39,24 @@ const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" 
   closed: { label: "Offline", color: "error" },
 };
 
-export default function BoardApp({ initialMe }: { initialMe: User }) {
+export type View = "board" | "animals" | "animal";
+
+/** `short` is what phones show, so the header stays on one line. */
+const VIEWS: { id: View; label: string; short: string; href: string }[] = [
+  { id: "animals", label: "Meet our animals", short: "Animals", href: "/animals" },
+  { id: "board", label: "Rescue board", short: "Board", href: "/board" },
+];
+
+export default function BoardApp({
+  initialMe,
+  view = "board",
+  animalId,
+}: {
+  initialMe: User;
+  view?: View;
+  /** For view "animal": which animal's page. */
+  animalId?: string;
+}) {
   const { status, send } = useBoardSocket();
   const board = useBoard((s) => s.board);
   const users = useBoard((s) => s.users);
@@ -44,6 +68,8 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
   const mobile = useMediaQuery(MOBILE_QUERY);
   const conn = CONNECTION[status];
   const promoted = usePromotion(me);
+  // An animal's page belongs to the Animals section.
+  const section: View = view === "animal" ? "animals" : view;
   // Straight after signing up (?welcome=1). Read once, then tidy the address bar.
   const [welcome] = useState(() => new URLSearchParams(window.location.search).has("welcome"));
   useEffect(() => {
@@ -54,16 +80,43 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
     <SendContext.Provider value={send}>
       <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default" }}>
         <AppBar position="sticky" sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-          <Toolbar sx={{ gap: 1.5, minHeight: { xs: 56 }, px: { xs: 2, sm: 2.5 } }}>
-            <Stack direction="row" spacing={1.25} sx={{ alignItems: "baseline", flex: 1, minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
-                Safe Paws
+          <Toolbar sx={{ gap: { xs: 1, sm: 1.5 }, minHeight: { xs: 56 }, px: { xs: 1.5, sm: 2.5 } }}>
+            <Stack direction="row" spacing={{ xs: 0.75, sm: 1.25 }} sx={{ alignItems: "baseline", flex: 1, minWidth: 0 }}>
+              {/* Slightly smaller on phones so the name and menu share one row. */}
+              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700, fontSize: { xs: "0.9375rem", sm: "1.25rem" } }}>
+                <Box component={NextLink} href="/" sx={{ color: "inherit", textDecoration: "none", borderRadius: 0.5, "&:hover": { color: "primary.main" }, "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 } }}>
+                  {SITE_NAME}
+                </Box>
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap sx={{ display: { xs: "none", md: "block" } }}>
-                Rescue board · Alexandria · sample data
-              </Typography>
+              <Stack component="nav" aria-label="Pages" direction="row" spacing={0.5}>
+                {VIEWS.map((v) => (
+                  <Button
+                    key={v.id}
+                    component={NextLink}
+                    href={v.href}
+                    size="small"
+                    aria-current={view === v.id ? "page" : undefined}
+                    color={section === v.id ? "primary" : "inherit"}
+                    sx={{
+                      minWidth: 0,
+                      px: { xs: 0.75, sm: 1.25 },
+                      whiteSpace: "nowrap",
+                      fontWeight: 600,
+                      color: section === v.id ? undefined : "text.secondary",
+                      bgcolor: section === v.id ? "action.selected" : undefined,
+                    }}
+                  >
+                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                      {v.label}
+                    </Box>
+                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                      {v.short}
+                    </Box>
+                  </Button>
+                ))}
+              </Stack>
             </Stack>
-            {!mobile && canEdit && (
+            {!mobile && canEdit && view === "board" && (
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => useAnimalForm.getState().openCreate()}>
                 Register an animal
               </Button>
@@ -77,7 +130,7 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
             />
             {me.role === "coordinator" && <MembersButton />}
             {me && (
-              <Box sx={{ textAlign: "right", lineHeight: 1.2 }}>
+              <Box sx={{ textAlign: "right", lineHeight: 1.2, display: { xs: "none", sm: "block" } }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {me.name}
                 </Typography>
@@ -87,9 +140,16 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
               </Box>
             )}
             <form action={logout}>
-              <Button type="submit" variant="outlined" color="inherit" size="small" sx={{ borderColor: "divider", color: "text.secondary" }}>
-                Sign out
-              </Button>
+              {mobile ? (
+                // Phones: an icon, so the title and menu fit on one line.
+                <IconButton type="submit" aria-label="Sign out" sx={{ color: "text.secondary" }}>
+                  <Logout />
+                </IconButton>
+              ) : (
+                <Button type="submit" variant="outlined" color="inherit" size="small" sx={{ borderColor: "divider", color: "text.secondary" }}>
+                  Sign out
+                </Button>
+              )}
             </form>
             {!mobile && <Bell />}
           </Toolbar>
@@ -103,7 +163,7 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
           </Alert>
         )}
 
-        {canEdit && !mobile && (
+        {canEdit && !mobile && view === "board" && (
           <Typography variant="body2" color="text.secondary" sx={{ px: 2.5, pt: 1.5 }}>
             Signed in as <strong>{me.name}</strong>. Sign in as someone else in a private window to see changes and
             notifications arrive live.
@@ -111,7 +171,11 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
         )}
 
         {board ? (
-          mobile ? (
+          view === "animals" ? (
+            <AnimalDirectory />
+          ) : view === "animal" && animalId ? (
+            <AnimalDetail animalId={animalId} />
+          ) : mobile ? (
             <MobileBoard />
           ) : (
             <Board />
@@ -155,7 +219,8 @@ export default function BoardApp({ initialMe }: { initialMe: User }) {
         </Snackbar>
         <AnimalDrawer />
         <AnimalFormDialog />
-        <Toasts bottomOffset={mobile ? MOBILE_NAV_HEIGHT : 0} />
+        <OfferContactDialog />
+        <Toasts bottomOffset={mobile && view === "board" ? MOBILE_NAV_HEIGHT : 0} />
       </Box>
     </SendContext.Provider>
   );

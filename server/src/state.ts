@@ -10,18 +10,22 @@
 import { randomUUID } from "node:crypto";
 import {
   approveMember,
+  deleteAnimal,
   getUser,
+  getUserEmail,
   insertAnimal,
   keepMember,
   listMembers,
   insertNote,
   insertNotifications,
+  insertRequest,
   listNotifications,
   loadBoard,
   markNotificationsRead,
   replaceMedia,
   saveColumns,
   setFollower,
+  setLike,
   touchAnimal,
   transaction,
   updateAnimalDetails,
@@ -30,10 +34,12 @@ import {
   STAGE_IDS,
   type Animal,
   type AnimalDetailsInput,
+  type AnimalRequest,
   type Board,
   type BoardPatch,
   type Media,
   type NotificationKind,
+  type RequestKind,
   type StaffRole,
   type StageId,
   type User,
@@ -162,6 +168,8 @@ export async function createAnimal(animalId: string, details: AnimalDetailsInput
     media: resolveMedia(details.media, [], actorId),
     stage: "reported",
     followers: [actorId],
+    likes: [],
+    requests: [],
     notes: [],
     updatedAt: now,
     updatedBy: actorId,
@@ -203,6 +211,22 @@ export async function updateAnimal(animalId: string, details: AnimalDetailsInput
   };
 }
 
+export async function removeAnimal(animalId: string) {
+  const animal = requireAnimal(animalId);
+  const column = board.columns[animal.stage].filter((id) => id !== animalId);
+  const columns: BoardPatch["columns"] = { [animal.stage]: column };
+
+  await transaction(async (tx) => {
+    await deleteAnimal(tx, animalId);
+    await saveColumns(tx, columns);
+  });
+
+  delete board.animals[animalId];
+  Object.assign(board.columns, columns);
+  board.version++;
+  return { animal, patch: { version: board.version, columns, animals: [], removed: [animalId] } satisfies BoardPatch };
+}
+
 export async function setFollow(animalId: string, userId: string, follow: boolean) {
   const animal = requireAnimal(animalId);
   await transaction((tx) => setFollower(tx, animalId, userId, follow));
@@ -210,6 +234,43 @@ export async function setFollow(animalId: string, userId: string, follow: boolea
   animal.followers = follow ? [...others, userId] : others;
   board.version++;
   return { version: board.version, columns: {}, animals: [animal] } satisfies BoardPatch;
+}
+
+export async function setLiked(animalId: string, userId: string, like: boolean) {
+  const animal = requireAnimal(animalId);
+  await transaction((tx) => setLike(tx, animalId, userId, like));
+  const others = animal.likes.filter((id) => id !== userId);
+  animal.likes = like ? [...others, userId] : others;
+  board.version++;
+  return { version: board.version, columns: {}, animals: [animal] } satisfies BoardPatch;
+}
+
+/**
+ * An offer to adopt or sponsor. Adopting only makes sense once the animal is
+ * ready; sponsoring until it has a home. The person also starts following
+ * the animal, so they hear what happens next.
+ */
+export async function requestAnimal(animalId: string, userId: string, kind: RequestKind, message: string) {
+  const animal = requireAnimal(animalId);
+  if (kind === "adopt" && animal.stage !== "ready") {
+    throw new BoardError(`${animal.name} isn't ready for adoption yet. You can sponsor ${animal.sex === "female" ? "her" : "him"} instead.`);
+  }
+  if (animal.stage === "adopted") throw new BoardError(`${animal.name} already has a home.`);
+  const request: AnimalRequest = { userId, kind, message, at: Date.now(), email: (await getUserEmail(userId)) ?? undefined };
+
+  const added = await transaction(async (tx) => {
+    const ok = await insertRequest(tx, animalId, request);
+    if (ok) await setFollower(tx, animalId, userId, true);
+    return ok;
+  });
+  if (!added) {
+    throw new BoardError(`You've already offered to ${kind} ${animal.name}. A coordinator will be in touch.`);
+  }
+
+  animal.requests = [...animal.requests, request];
+  if (!animal.followers.includes(userId)) animal.followers = [...animal.followers, userId];
+  board.version++;
+  return { animal, patch: { version: board.version, columns: {}, animals: [animal] } satisfies BoardPatch };
 }
 
 /** Saved first, so people who are offline find them when they come back. */

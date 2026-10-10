@@ -11,6 +11,7 @@
   "scripts": {
     "migrate": "tsx --env-file-if-exists=../../.env.local src/cli.ts migrate",
     "seed": "tsx --env-file-if-exists=../../.env.local src/cli.ts seed",
+    "demo": "tsx --env-file-if-exists=../../.env.local src/cli.ts demo",
     "reset": "tsx --env-file-if-exists=../../.env.local src/cli.ts reset",
     "typecheck": "tsc --noEmit"
   },

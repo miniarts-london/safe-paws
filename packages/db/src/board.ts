@@ -1,5 +1,7 @@
 import type {
   Animal,
+  AnimalRequest,
+  RequestKind,
   Board,
   Columns,
   Media,
@@ -27,7 +29,7 @@ type AnimalRow = {
 /** The whole board in one go. It's small (a rescue's animals in care), so the server keeps it in memory. */
 export async function loadBoard(): Promise<{ users: User[]; board: Board }> {
   const db = pool();
-  const [users, animals, followers, notes, media] = await Promise.all([
+  const [users, animals, followers, notes, media, likes, requests] = await Promise.all([
     db.query<User>("select id, name, role, title from users order by created_at, id"),
     db.query<AnimalRow>("select * from animals order by stage, position"),
     db.query<{ animal_id: string; user_id: string }>("select animal_id, user_id from animal_followers"),
@@ -38,6 +40,12 @@ export async function loadBoard(): Promise<{ users: User[]; board: Board }> {
       `select m.animal_id, u.id, u.kind, u.name, m.added_by, m.at
          from animal_media m join uploads u on u.id = m.upload_id
         order by m.animal_id, m.position`,
+    ),
+    db.query<{ animal_id: string; user_id: string }>("select animal_id, user_id from animal_likes order by at"),
+    db.query<{ animal_id: string; user_id: string; kind: RequestKind; message: string; at: Date; email: string }>(
+      `select r.animal_id, r.user_id, r.kind, r.message, r.at, u.email
+         from animal_requests r join users u on u.id = r.user_id
+        order by r.at, r.id`,
     ),
   ]);
 
@@ -57,6 +65,8 @@ export async function loadBoard(): Promise<{ users: User[]; board: Board }> {
       media: [],
       stage: r.stage,
       followers: [],
+      likes: [],
+      requests: [],
       notes: [],
       updatedAt: ms(r.updated_at),
       updatedBy: r.updated_by ?? "",
@@ -64,11 +74,21 @@ export async function loadBoard(): Promise<{ users: User[]; board: Board }> {
     columns[r.stage].push(r.id);
   }
   for (const f of followers.rows) byId[f.animal_id]?.followers.push(f.user_id);
+  for (const l of likes.rows) byId[l.animal_id]?.likes.push(l.user_id);
+  for (const q of requests.rows) {
+    byId[q.animal_id]?.requests.push({ userId: q.user_id, kind: q.kind, message: q.message, at: ms(q.at), email: q.email });
+  }
   for (const n of notes.rows) byId[n.animal_id]?.notes.push({ id: n.id, authorId: n.author_id, text: n.text, at: ms(n.at) });
   for (const m of media.rows) {
     byId[m.animal_id]?.media.push({ id: m.id, kind: m.kind, name: m.name, url: `/api/media/${m.id}`, addedBy: m.added_by, at: ms(m.at) });
   }
   return { users: users.rows, board: { version: 1, columns, animals: byId } };
+}
+
+/** Just the name, for an animal page's title. */
+export async function getAnimalName(id: string) {
+  const { rows } = await pool().query<{ name: string }>("select name from animals where id = $1", [id]);
+  return rows[0]?.name ?? null;
 }
 
 /* ---------- writing (each takes the caller's transaction) ---------- */
@@ -132,6 +152,11 @@ export async function replaceMedia(tx: Tx, animalId: string, media: Media[]) {
   }
 }
 
+/** Notes, followers, likes, offers, media links and notifications go with it (on delete cascade). */
+export async function deleteAnimal(tx: Tx, id: string) {
+  await tx.query("delete from animals where id = $1", [id]);
+}
+
 export async function insertNote(tx: Tx, animalId: string, n: Note) {
   await tx.query("insert into notes (id, animal_id, author_id, text, at) values ($1,$2,$3,$4,to_timestamp($5 / 1000.0))", [
     n.id, animalId, n.authorId, n.text, n.at,
@@ -145,6 +170,26 @@ export async function setFollower(tx: Tx, animalId: string, userId: string, foll
       : "delete from animal_followers where animal_id = $1 and user_id = $2",
     [animalId, userId],
   );
+}
+
+export async function setLike(tx: Tx, animalId: string, userId: string, like: boolean) {
+  await tx.query(
+    like
+      ? "insert into animal_likes (animal_id, user_id) values ($1, $2) on conflict do nothing"
+      : "delete from animal_likes where animal_id = $1 and user_id = $2",
+    [animalId, userId],
+  );
+}
+
+/** Returns false if this person already made this kind of request for this animal. */
+export async function insertRequest(tx: Tx, animalId: string, r: AnimalRequest) {
+  const { rowCount } = await tx.query(
+    `insert into animal_requests (animal_id, user_id, kind, message, at)
+     values ($1, $2, $3, $4, to_timestamp($5 / 1000.0))
+     on conflict (animal_id, user_id, kind) do nothing`,
+    [animalId, r.userId, r.kind, r.message, r.at],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 /* ---------- notifications ---------- */

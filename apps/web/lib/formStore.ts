@@ -8,6 +8,9 @@ type FormState = {
   openCreate: () => void;
   openEdit: (animalId: string) => void;
   close: () => void;
+  /** Confirmation once the board has the change, e.g. "Max is on the board, at the top of Reported." */
+  notice: string | null;
+  setNotice: (message: string | null) => void;
 };
 
 export const useAnimalForm = create<FormState>((set) => ({
@@ -15,4 +18,6 @@ export const useAnimalForm = create<FormState>((set) => ({
   openCreate: () => set({ form: { mode: "create" } }),
   openEdit: (animalId) => set({ form: { mode: "edit", animalId } }),
   close: () => set({ form: null }),
+  notice: null,
+  setNotice: (notice) => set({ notice }),
 }));

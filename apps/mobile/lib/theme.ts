@@ -7,12 +7,15 @@ const light = {
   ink: "#1d2422",
   ink2: "#56635f",
   rule: "#d4e0db",
-  sea: "#6d2a5f", // primary: plum
-  seaSoft: "#dcf3ea", // soft highlight: mint
-  mint: "#1d7059",
-  signal: "#6d2a5f",
-  dog: "#3f7f6d",
-  cat: "#8a4a7c",
+  sea: "#B93B8F", // primary: plum
+  seaSoft: "#ADEBB3", // soft highlight: mint
+  mint: "#1f5e2a", // text on mint, and mint-coloured text
+  signal: "#B93B8F",
+  // Placeholders before an animal has a photo: mint for dogs, plum for cats.
+  dog: "#ADEBB3",
+  onDog: "#12391c",
+  cat: "#B93B8F",
+  onCat: "#ffffff",
   onSea: "#ffffff",
 };
 
@@ -22,12 +25,14 @@ const dark: typeof light = {
   ink: "#e4ece9",
   ink2: "#9fb0aa",
   rule: "#2b3833",
-  sea: "#e2a8d3",
-  seaSoft: "#173a30",
-  mint: "#7fdcbd",
-  signal: "#e2a8d3",
-  dog: "#7cc4ae",
-  cat: "#d39ac6",
+  sea: "#d589bc", // plum, lightened to stay readable on dark
+  seaSoft: "#1d3a22",
+  mint: "#ADEBB3",
+  signal: "#d589bc",
+  dog: "#ADEBB3",
+  onDog: "#12391c",
+  cat: "#B93B8F",
+  onCat: "#ffffff",
   onSea: "#2a0f24",
 };
 

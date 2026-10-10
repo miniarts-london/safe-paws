@@ -6,7 +6,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import type { Notification } from "@safe-paws/shared/protocol";
-import { useBoard } from "@safe-paws/shared/store";
+import { openNotification, useBoard } from "@safe-paws/shared/store";
 import { timeAgo, useNow } from "@safe-paws/shared/time";
 import { useSend } from "@/lib/useBoardSocket";
 import { visuallyHidden } from "@/lib/visuallyHidden";
@@ -27,7 +27,7 @@ export function NotificationList({ onPick }: { onPick?: () => void }) {
 
   const open = (n: Notification) => {
     if (!n.read) markRead([n.id]);
-    useBoard.getState().openAnimal(n.animalId);
+    openNotification(n);
     onPick?.();
   };
 

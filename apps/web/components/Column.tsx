@@ -26,7 +26,7 @@ export function Column({ stage, ids, animals, users, me, now }: Props) {
         minWidth: 0,
         borderRadius: 3,
         border: 1,
-        borderColor: isOver ? "mint.main" : "transparent",
+        borderColor: isOver ? "mint.dark" : "transparent",
         bgcolor: isOver ? "mint.light" : "background.column",
         transition: "background-color .15s, border-color .15s",
       }}

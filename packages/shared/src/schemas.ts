@@ -47,6 +47,15 @@ export const noteSchema = z.object({
 });
 export type NoteInput = z.infer<typeof noteSchema>;
 
+/* ---------- adopt / sponsor ---------- */
+
+export const REQUEST_MESSAGE_MAX = 500;
+export const requestSchema = z.object({
+  kind: z.enum(["adopt", "sponsor"], { error: "Choose adopt or sponsor." }),
+  message: z.string().trim().max(REQUEST_MESSAGE_MAX, `Keep your message under ${REQUEST_MESSAGE_MAX} characters.`),
+});
+export type RequestInput = z.infer<typeof requestSchema>;
+
 /* ---------- animal register / edit ---------- */
 
 export const MEDIA_MAX = 12;

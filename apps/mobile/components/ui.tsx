@@ -25,7 +25,7 @@ export function Avatar({ animal, size = 44 }: { animal: Animal; size?: number })
       accessibilityElementsHidden
       importantForAccessibility="no"
     >
-      <Text style={[styles.avatarText, { fontSize: size * 0.42 }]}>{animal.name[0]}</Text>
+      <Text style={[styles.avatarText, { fontSize: size * 0.42, color: animal.species === "dog" ? t.onDog : t.onCat }]}>{animal.name[0]}</Text>
     </View>
   );
 }
@@ -87,7 +87,7 @@ export function Empty({ children }: { children: ReactNode }) {
 
 const styles = StyleSheet.create({
   avatar: { alignItems: "center", justifyContent: "center", borderRadius: 10 },
-  avatarText: { color: "#fff", fontWeight: "700" },
+  avatarText: { fontWeight: "700" },
   button: {
     minHeight: 44,
     paddingHorizontal: 16,

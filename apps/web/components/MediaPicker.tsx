@@ -132,7 +132,7 @@ export function MediaPicker({ value, onChange, onBusyChange, error }: Props) {
           gap: 1,
           p: 1,
           border: "1.5px dashed",
-          borderColor: dragging ? "mint.main" : error ? "error.main" : "divider",
+          borderColor: dragging ? "mint.dark" : error ? "error.main" : "divider",
           bgcolor: dragging ? "mint.light" : "transparent",
           borderRadius: 3,
           transition: "background-color .15s, border-color .15s",
