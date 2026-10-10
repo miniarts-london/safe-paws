@@ -13,14 +13,22 @@ import { SESSION_COOKIE, verifySessionToken } from "@safe-paws/shared/session";
 
 /**
  * Where photos and videos live:
- * - On Vercel, in a private Vercel Blob store (when BLOB_READ_WRITE_TOKEN is set).
+ * - On Vercel, in a private Vercel Blob store (once one is connected to the project).
  *   Vercel's servers can't keep files on disk, and only accept requests up to
  *   4.5 MB, so the browser uploads straight to Blob instead.
  * - Locally, in a folder on disk, so development needs no setup.
  * Either way, what each file is and who uploaded it is a row in the Postgres
  * `uploads` table, and files are only served to signed-in people.
  */
-export const usingBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+/**
+ * A Blob store is connected. Newer stores sign in with Vercel's short-lived
+ * OIDC credentials (BLOB_STORE_ID); older ones with a fixed key
+ * (BLOB_READ_WRITE_TOKEN). The SDK handles both for reading and deleting;
+ * browser uploads use a different handshake for each (see /api/media/upload).
+ */
+export const usingBlob = () => !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+export const blobAuth = (): "token" | "oidc" | null =>
+  process.env.BLOB_READ_WRITE_TOKEN ? "token" : process.env.BLOB_STORE_ID ? "oidc" : null;
 
 // turbopackIgnore: uploads are runtime data, so the bundler shouldn't trace this folder into the build.
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), ".uploads");
@@ -99,11 +107,7 @@ async function record(meta: MediaMeta, undo: () => Promise<unknown>) {
 export async function saveUpload(file: File, userId: string): Promise<MediaMeta> {
   // On Vercel the disk can't keep files: say what's missing rather than failing quietly.
   if (process.env.VERCEL && !usingBlob()) {
-    throw new UploadError(
-      process.env.BLOB_STORE_ID
-        ? "Photo storage is connected but has no BLOB_READ_WRITE_TOKEN. Check the Blob store's environment variables in Vercel, then redeploy."
-        : "Photo storage isn't set up on this site yet. Connect a private Vercel Blob store to the project, then redeploy.",
-    );
+    throw new UploadError("Photo storage isn't set up on this site yet. Connect a private Vercel Blob store to the project, then redeploy.");
   }
   const { kind } = checkFile(file.type, file.size);
   const firstBytes = Buffer.from(await file.slice(0, 16).arrayBuffer());

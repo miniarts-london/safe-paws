@@ -60,7 +60,9 @@ function uploadViaServer(file: File, onProgress: (fraction: number) => void) {
  * take large files through the server), then the server checks and records it.
  */
 async function uploadDirect(file: File, onProgress: (fraction: number) => void): Promise<PickedMedia> {
-  const { upload: toBlob } = await import("@vercel/blob/client");
+  const { upload, uploadPresigned } = await import("@vercel/blob/client");
+  // Two kinds of store, two handshakes; the server says which (see /api/media/upload).
+  const toBlob = (await uploadMode()).auth === "oidc" ? uploadPresigned : upload;
   const id = crypto.randomUUID();
   try {
     await toBlob(`media/${id}`, file, {
@@ -88,19 +90,20 @@ async function uploadDirect(file: File, onProgress: (fraction: number) => void):
   return { id: json.id, kind: json.kind, name: json.name ?? file.name };
 }
 
-/** Asked once per page: does this site upload straight to Blob? */
-let direct: Promise<boolean> | null = null;
-const usesDirect = () =>
-  (direct ??= fetch("/api/media/upload")
-    .then((r) => (r.ok ? r.json() : { direct: false }))
-    .then((j: { direct?: boolean }) => !!j.direct)
+/** Asked once per page: does this site upload straight to Blob, and with which handshake? */
+type UploadMode = { direct: boolean; auth: "token" | "oidc" | null };
+let mode: Promise<UploadMode> | null = null;
+const uploadMode = () =>
+  (mode ??= fetch("/api/media/upload")
+    .then((r) => (r.ok ? r.json() : { direct: false, auth: null }))
+    .then((j: Partial<UploadMode>) => ({ direct: !!j.direct, auth: j.auth ?? null }))
     .catch(() => {
-      direct = null; // try again next time
-      return false;
+      mode = null; // try again next time
+      return { direct: false, auth: null };
     }));
 
 async function upload(file: File, onProgress: (fraction: number) => void) {
-  return (await usesDirect()) ? uploadDirect(file, onProgress) : uploadViaServer(file, onProgress);
+  return (await uploadMode()).direct ? uploadDirect(file, onProgress) : uploadViaServer(file, onProgress);
 }
 
 /** Checks a file before uploading, with the same limits the server enforces. */
