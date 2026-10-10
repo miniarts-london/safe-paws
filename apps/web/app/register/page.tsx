@@ -6,12 +6,15 @@ import type { Metadata } from "next";
 import { SITE_NAME } from "@/lib/site";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
+import { safeNext } from "@/lib/next";
 import { RegisterForm } from "./RegisterForm";
 
 export const metadata: Metadata = { title: `Create an account · ${SITE_NAME}` };
 
-export default async function RegisterPage() {
-  if (await getSession()) redirect("/board");
+/** `?next=` (e.g. from "Help Luna") brings people back to where they were afterwards. */
+export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+  const next = safeNext((await searchParams).next) ?? undefined;
+  if (await getSession()) redirect(next ?? "/board");
 
   return (
     <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", px: 2, py: 4, bgcolor: "background.default" }}>
@@ -24,7 +27,7 @@ export default async function RegisterPage() {
             Follow the animals in care and get their news. If you volunteer with the rescue, a coordinator will give you
             access to update the board.
           </Typography>
-          <RegisterForm />
+          <RegisterForm next={next} />
         </CardContent>
       </Card>
     </Box>

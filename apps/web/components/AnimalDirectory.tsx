@@ -39,6 +39,7 @@ import NextLink from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
+import { JoinDialog } from "./JoinDialog";
 import { useSend } from "@/lib/useBoardSocket";
 
 type Species = "all" | "dog" | "cat";
@@ -299,14 +300,17 @@ export function AnimalActions({ animal, onOffer }: { animal: Animal; onOffer: ()
         </Typography>
       )}
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}>
-        <Button
-          variant={following ? "contained" : "outlined"}
-          color={following ? "mint" : "primary"}
-          aria-pressed={following}
-          onClick={() => send({ type: "animal.follow", animalId: animal.id, follow: !following })}
-        >
-          {following ? "Following" : "Follow"}
-        </Button>
+        {/* Following needs an account, so visitors don't see it. */}
+        {me && (
+          <Button
+            variant={following ? "contained" : "outlined"}
+            color={following ? "mint" : "primary"}
+            aria-pressed={following}
+            onClick={() => send({ type: "animal.follow", animalId: animal.id, follow: !following })}
+          >
+            {following ? "Following" : "Follow"}
+          </Button>
+        )}
         {(canAdopt || canSponsor) && (
           <Button variant="contained" onClick={onOffer}>
             {offerLabel}
@@ -315,7 +319,8 @@ export function AnimalActions({ animal, onOffer }: { animal: Animal; onOffer: ()
         {animal.stage === "adopted" && <Chip label="Has a home" color="mint" />}
         <Stack direction="row" sx={{ alignItems: "center", ml: "auto !important" }}>
           <IconButton
-            onClick={() => send({ type: "animal.like", animalId: animal.id, like: !liked })}
+            // Visitors are asked to join, like Adopt/Sponsor.
+            onClick={() => (me ? send({ type: "animal.like", animalId: animal.id, like: !liked }) : onOffer())}
             aria-pressed={liked}
             aria-label={`Like ${animal.name}`}
             sx={{ color: liked ? "error.main" : "text.secondary" }}
@@ -333,8 +338,11 @@ export function AnimalActions({ animal, onOffer }: { animal: Animal; onOffer: ()
 
 /** The offer dialog and its thank-you message, for any page that shows AnimalActions. */
 export function useOfferFlow() {
+  const signedIn = !!useBoard((s) => s.me);
   const [asking, setAsking] = useState<Animal | null>(null);
   const [thanks, setThanks] = useState<string | null>(null);
+  // Visitors who aren't signed in are asked to join first.
+  if (!signedIn) return { offer: setAsking, element: <JoinDialog animal={asking} onClose={() => setAsking(null)} /> };
   const element = (
     <>
       <OfferDialog

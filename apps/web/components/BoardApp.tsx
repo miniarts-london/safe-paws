@@ -76,7 +76,7 @@ export default function BoardApp({
   // Straight after signing up (?welcome=1). Read once, then tidy the address bar.
   const [welcome] = useState(() => new URLSearchParams(window.location.search).has("welcome"));
   useEffect(() => {
-    if (welcome) window.history.replaceState(null, "", "/board");
+    if (welcome) window.history.replaceState(null, "", window.location.pathname);
   }, [welcome]);
 
   const nav = (

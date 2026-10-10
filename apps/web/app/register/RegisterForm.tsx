@@ -18,7 +18,7 @@ import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { register } from "./actions";
 
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string }) {
   const [pending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const {
@@ -35,7 +35,7 @@ export function RegisterForm() {
   const onSubmit = (values: RegisterInput) =>
     startTransition(async () => {
       // On success the action redirects to the board, so a returned value always means it failed.
-      const result = await register(values);
+      const result = await register(values, next);
       if (!result) return;
       if (result.field) setError(result.field, { message: result.error }, { shouldFocus: true });
       else setError("root.server", { message: result.error });
@@ -136,7 +136,7 @@ export function RegisterForm() {
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
         Already have an account?{" "}
-        <Link component={NextLink} href="/login" sx={{ fontWeight: 600 }}>
+        <Link component={NextLink} href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} sx={{ fontWeight: 600 }}>
           Sign in
         </Link>
       </Typography>

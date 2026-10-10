@@ -8,12 +8,15 @@ import NextLink from "next/link";
 import { redirect } from "next/navigation";
 import { DEMO_PASSWORD, demoAccounts, showDemoAccounts } from "@/lib/auth/accounts";
 import { getSession } from "@/lib/auth/session";
+import { safeNext } from "@/lib/next";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = { title: `Sign in · ${SITE_NAME}` };
 
-export default async function LoginPage() {
-  if (await getSession()) redirect("/board");
+/** `?next=` (e.g. from "Help Luna") brings people back to where they were afterwards. */
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const next = safeNext((await searchParams).next) ?? undefined;
+  if (await getSession()) redirect(next ?? "/board");
 
   return (
     <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", px: 2, py: 4, bgcolor: "background.default" }}>
@@ -27,7 +30,7 @@ export default async function LoginPage() {
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             Sign in to see the animals in care and get updates on the ones you follow.
           </Typography>
-          <LoginForm demos={showDemoAccounts() ? demoAccounts : []} demoPassword={DEMO_PASSWORD} />
+          <LoginForm demos={showDemoAccounts() ? demoAccounts : []} demoPassword={DEMO_PASSWORD} next={next} />
         </CardContent>
       </Card>
     </Box>

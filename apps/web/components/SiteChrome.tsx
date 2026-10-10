@@ -17,8 +17,8 @@ export function SiteHeader({ signedIn }: { signedIn: boolean }) {
       // Warm sand with deep plum text by day (like the desert below); by night a deep plum with soft pink text.
       sx={(t) => ({
         bgcolor: "#f3e5c4",
-        color: "#5a1d47",
-        ...t.applyStyles("dark", { bgcolor: "#3d1a33", color: "#f0c4e1" }),
+        color: "#5c1e3c",
+        ...t.applyStyles("dark", { bgcolor: "#381224", color: "#ebc8d9" }),
       })}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1 }, px: { xs: 2, sm: 3 }, py: 1.5, maxWidth: 1120, mx: "auto" }}>

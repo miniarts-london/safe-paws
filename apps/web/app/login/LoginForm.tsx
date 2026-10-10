@@ -17,7 +17,7 @@ import { login } from "./actions";
 
 type Demo = { email: string; name: string; title: string };
 
-export function LoginForm({ demos, demoPassword }: { demos: Demo[]; demoPassword: string }) {
+export function LoginForm({ demos, demoPassword, next }: { demos: Demo[]; demoPassword: string; next?: string }) {
   const [pending, startTransition] = useTransition();
   const {
     control,
@@ -33,8 +33,8 @@ export function LoginForm({ demos, demoPassword }: { demos: Demo[]; demoPassword
 
   const onSubmit = (values: LoginInput) =>
     startTransition(async () => {
-      // On success the action redirects to /board, so a returned value always means it failed.
-      const result = await login(values);
+      // On success the action redirects (to `next`, or the board), so a returned value always means it failed.
+      const result = await login(values, next);
       if (result?.error) {
         setError("root.server", { message: result.error });
         setValue("password", "");
@@ -98,7 +98,7 @@ export function LoginForm({ demos, demoPassword }: { demos: Demo[]; demoPassword
 
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
         New here?{" "}
-        <Link component={NextLink} href="/register" sx={{ fontWeight: 600 }}>
+        <Link component={NextLink} href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} sx={{ fontWeight: 600 }}>
           Create an account
         </Link>
       </Typography>

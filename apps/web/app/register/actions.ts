@@ -6,6 +6,7 @@ import { registerSchema, type RegisterInput } from "@safe-paws/shared/schemas";
 import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/auth/accounts";
 import { createSession } from "@/lib/auth/session";
+import { safeNext } from "@/lib/next";
 
 export type RegisterResult = { error: string; field?: keyof RegisterInput } | undefined;
 
@@ -13,7 +14,8 @@ export type RegisterResult = { error: string; field?: keyof RegisterInput } | un
  * Everyone joins as a member: they can see the board and follow animals.
  * A coordinator makes them staff before they can change anything.
  */
-export async function register(input: RegisterInput): Promise<RegisterResult> {
+/** `next`: where to go afterwards, e.g. back to the animal they wanted to help (only paths on this site). */
+export async function register(input: RegisterInput, next?: string): Promise<RegisterResult> {
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -31,5 +33,6 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
   if (!user) return { field: "email", error: "There's already an account with that email. Sign in instead." };
 
   await createSession(user.id);
-  redirect("/board?welcome=1");
+  const back = safeNext(next);
+  redirect(back ? `${back}${back.includes("?") ? "&" : "?"}welcome=1` : "/board?welcome=1");
 }

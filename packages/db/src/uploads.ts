@@ -17,6 +17,12 @@ export async function insertUpload(u: Omit<UploadRecord, "at">) {
   );
 }
 
+/** True when the file is shown on an animal's profile (so visitors may see it too). */
+export async function isAnimalMedia(uploadId: string) {
+  const { rowCount } = await pool().query("select 1 from animal_media where upload_id = $1 limit 1", [uploadId]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function getUpload(id: string): Promise<UploadRecord | null> {
   const { rows } = await pool().query<{
     id: string; kind: UploadRecord["kind"]; mime_type: string; name: string; size_bytes: string; uploaded_by: string; at: Date;

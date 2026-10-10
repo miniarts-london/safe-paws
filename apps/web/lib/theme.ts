@@ -3,8 +3,8 @@
 import { createTheme } from "@mui/material/styles";
 
 /**
- * Safe Paws theme: plum (#B93B8F) for anything you can act on, mint
- * (#ADEBB3) for soft highlights (following, unread, the column a card is over).
+ * Safe Paws theme: plum (#B93B77) for anything you can act on, mint
+ * (#B6DCAD) for soft highlights (following, unread, the column a card is over).
  * Mint is pale, so lines and text that must stand out use mint.dark, a deeper
  * green with enough contrast. In dark mode plum is lightened so it stays readable.
  * Light and dark start from the device's setting, and people can switch
@@ -46,26 +46,26 @@ export const theme = createTheme({
   colorSchemes: {
     light: {
       palette: {
-        primary: { main: "#B93B8F", light: "#f7e4f0", dark: "#8f2c6e", contrastText: "#ffffff" },
-        mint: { main: "#ADEBB3", light: "#e4f8e6", dark: "#2e7d3a", contrastText: "#12391c" },
-        secondary: { main: "#ADEBB3", contrastText: "#12391c" },
+        primary: { main: "#B93B77", light: "#f5e4ec", dark: "#902e5d", contrastText: "#ffffff" },
+        mint: { main: "#B6DCAD", light: "#e2f1de", dark: "#3c742f", contrastText: "#193612" },
+        secondary: { main: "#B6DCAD", contrastText: "#193612" },
         error: { main: "#b42346" },
         background: { default: "#f2f7f5", paper: "#ffffff", column: "#e6efeb" },
         text: { primary: "#1d2422", secondary: "#56635f" },
         divider: "#d4e0db",
-        species: { dog: "#ADEBB3", onDog: "#12391c", cat: "#B93B8F", onCat: "#ffffff" },
+        species: { dog: "#B6DCAD", onDog: "#193612", cat: "#B93B77", onCat: "#ffffff" },
       },
     },
     dark: {
       palette: {
-        primary: { main: "#d589bc", light: "#3d1a33", dark: "#f0c4e1", contrastText: "#2a0f24" },
-        mint: { main: "#ADEBB3", light: "#1d3a22", dark: "#d3f5d6", contrastText: "#12391c" },
-        secondary: { main: "#ADEBB3", contrastText: "#12391c" },
+        primary: { main: "#d589ad", light: "#381224", dark: "#ebc8d9", contrastText: "#2a0f1c" },
+        mint: { main: "#B6DCAD", light: "#223b1c", dark: "#d7ecd2", contrastText: "#193612" },
+        secondary: { main: "#B6DCAD", contrastText: "#193612" },
         error: { main: "#ff8fa8" },
         background: { default: "#111816", paper: "#1a2421", column: "#151e1b" },
         text: { primary: "#e4ece9", secondary: "#9fb0aa" },
         divider: "#2b3833",
-        species: { dog: "#ADEBB3", onDog: "#12391c", cat: "#B93B8F", onCat: "#ffffff" },
+        species: { dog: "#B6DCAD", onDog: "#193612", cat: "#B93B77", onCat: "#ffffff" },
       },
     },
   },

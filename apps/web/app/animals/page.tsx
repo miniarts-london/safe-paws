@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
-import { SITE_NAME } from "@/lib/site";
-import BoardApp from "@/components/BoardClient";
 import { getUser } from "@safe-paws/db";
-import { redirect } from "next/navigation";
-import { requireUserId } from "@/lib/auth/session";
+import BoardApp from "@/components/BoardClient";
+import { PublicAnimals } from "@/components/PublicAnimals";
+import { getSession } from "@/lib/auth/session";
+import { publicBoard } from "@/lib/publicBoard";
+import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Meet our animals · ${SITE_NAME}`,
   description: "Every animal in the rescue's care, with their details. Follow, like, or offer to adopt or sponsor.",
 };
 
-/** Read-only list of every animal, for everyone signed in (members and staff). */
+/**
+ * Every animal, for everyone. Signed in: live, inside the app, with Follow,
+ * Like and offers. Visitors: a read-only snapshot; helping asks them to join.
+ */
 export default async function AnimalsPage() {
-  const userId = await requireUserId();
-  const user = await getUser(userId);
-  if (!user) redirect("/api/session/gone");
-  return <BoardApp initialMe={user} view="animals" />;
+  const session = await getSession();
+  const user = session ? await getUser(session.uid) : null;
+  if (user) return <BoardApp initialMe={user} view="animals" />;
+  return <PublicAnimals snapshot={await publicBoard()} />;
 }

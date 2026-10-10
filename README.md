@@ -114,11 +114,13 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 
 ### Home page
 
-`/` is a public page anyone can see without signing in: "Helping abandoned Dogs of Egypt", the donation message, and two buttons. **Donate** goes to `/donate`, a public page with the bank transfer and PayPal details (edit them in `apps/web/lib/donation.ts`). **Meet our animals** goes to the Animals page, via sign-in for visitors who aren't signed in.
+`/` is a public page anyone can see without signing in: "Helping abandoned Dogs of Egypt", the donation message, and two buttons. **Donate** goes to `/donate`, a public page with the bank transfer and PayPal details (edit them in `apps/web/lib/donation.ts`). **Meet our animals** goes to the Animals page.
 
 ### The Animals page
 
 `/animals` (the **Animals** link in the header) lists every animal with its details for everyone signed in, members and staff alike. It's read-only: nothing here changes an animal's record. Search by name or area, and filter by stage or dogs and cats.
+
+**Visitors who aren't signed in** can see the Animals page and each animal's page too, read-only and without live updates (a snapshot when the page loads, from `apps/web/lib/publicBoard.ts`). They see the photos, updates and how many people follow and like each animal, but never who: followers and likes are counts, offers to help are left out, and the only names shown are staff on updates. There's no **Follow** button; **Adopt or sponsor** and **Like** open a popup asking them to create an account or sign in, which then brings them straight back to that animal (`?next=`, only ever a path on this site). Photos and videos on an animal's profile are served to visitors; files still sitting in someone's unsaved form stay private.
 
 - **Click any card** (or its name, with the keyboard) to open that animal's page at `/animals/<id>`: every photo and video, the facts, where it is on the way from street to home, followers and likes, and all updates. The same buttons are there too.
 - Each card shows its first photo (at most 200px tall) and how many updates there are; the updates open in a popup.
