@@ -4,44 +4,55 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
 import { SITE_CREDIT, SITE_NAME } from "@/lib/site";
 
-/** Header for the public pages (home, donate). */
+/** Header for the public pages (home, and donate for visitors). The home page has its own Donate button. */
 export function SiteHeader({ signedIn }: { signedIn: boolean }) {
+  // Everything in the bar takes the bar's text colour.
+  const onPlum = { color: "inherit", borderColor: "currentColor" } as const;
   return (
     <Box
       component="header"
-      sx={{ display: "flex", alignItems: "center", gap: 1, px: { xs: 2, sm: 3 }, py: 2, maxWidth: 1120, width: "100%", mx: "auto" }}
+      // Warm sand with deep plum text by day (like the desert below); by night a deep plum with soft pink text.
+      sx={(t) => ({
+        bgcolor: "#f3e5c4",
+        color: "#5a1d47",
+        ...t.applyStyles("dark", { bgcolor: "#3d1a33", color: "#f0c4e1" }),
+      })}
     >
-      <Typography component="p" sx={{ fontWeight: 700, fontSize: 20, flex: 1 }}>
-        <Box
-          component={NextLink}
-          href="/"
-          sx={{
-            color: "inherit",
-            textDecoration: "none",
-            borderRadius: 0.5,
-            "&:hover": { color: "primary.main" },
-            "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
-          }}
-        >
-          {SITE_NAME}
-        </Box>
-      </Typography>
-      {signedIn ? (
-        <Button component={NextLink} href="/board" variant="outlined">
-          Open the board
-        </Button>
-      ) : (
-        <>
-          <Button component={NextLink} href="/login" color="inherit">
-            Sign in
+      <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1 }, px: { xs: 2, sm: 3 }, py: 1.5, maxWidth: 1120, mx: "auto" }}>
+        <Typography component="p" noWrap sx={{ fontWeight: 700, fontSize: { xs: 17, sm: 20 }, flex: 1, minWidth: 0 }}>
+          <Box
+            component={NextLink}
+            href="/"
+            sx={{
+              color: "inherit",
+              textDecoration: "none",
+              borderRadius: 0.5,
+              "&:hover": { textDecoration: "underline", textUnderlineOffset: 4 },
+              "&:focus-visible": { outline: 2, outlineColor: "currentColor", outlineOffset: 2 },
+            }}
+          >
+            {SITE_NAME}
+          </Box>
+        </Typography>
+        <ThemeToggle color="inherit" />
+        {signedIn ? (
+          <Button component={NextLink} href="/board" variant="outlined" sx={onPlum}>
+            Open the board
           </Button>
-          <Button component={NextLink} href="/register" variant="outlined">
-            Join
-          </Button>
-        </>
-      )}
+        ) : (
+          <>
+            <Button component={NextLink} href="/login" color="inherit" sx={{ minWidth: 0, px: { xs: 1, sm: 1.5 } }}>
+              Sign in
+            </Button>
+            <Button component={NextLink} href="/register" variant="outlined" sx={onPlum}>
+              Join
+            </Button>
+          </>
+        )}
+      </Box>
     </Box>
   );
 }

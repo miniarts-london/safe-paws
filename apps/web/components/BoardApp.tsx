@@ -30,7 +30,9 @@ import { Bell } from "./Bell";
 import { MembersButton } from "./MembersDialog";
 import { OfferContactDialog } from "./OfferContactDialog";
 import { Board } from "./Board";
+import { DonateContent } from "./DonatePage";
 import { MOBILE_NAV_HEIGHT, MobileBoard } from "./MobileBoard";
+import { ThemeToggle } from "./ThemeToggle";
 import { Toasts } from "./Toasts";
 
 const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" | "error" }> = {
@@ -39,12 +41,13 @@ const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" 
   closed: { label: "Offline", color: "error" },
 };
 
-export type View = "board" | "animals" | "animal";
+export type View = "board" | "animals" | "animal" | "donate";
 
-/** `short` is what phones show, so the header stays on one line. */
+/** The menu. `short` is what phones show, in the menu's own row under the name. */
 const VIEWS: { id: View; label: string; short: string; href: string }[] = [
   { id: "animals", label: "Meet our animals", short: "Animals", href: "/animals" },
   { id: "board", label: "Rescue board", short: "Board", href: "/board" },
+  { id: "donate", label: "Donate", short: "Donate", href: "/donate" },
 ];
 
 export default function BoardApp({
@@ -76,45 +79,49 @@ export default function BoardApp({
     if (welcome) window.history.replaceState(null, "", "/board");
   }, [welcome]);
 
+  const nav = (
+    <Stack
+      component="nav"
+      aria-label="Pages"
+      direction="row"
+      spacing={0.5}
+      sx={mobile ? { height: 44, px: 1, pb: 0.75, alignItems: "center", "& > a": { flex: 1 } } : undefined}
+    >
+      {VIEWS.map((v) => (
+        <Button
+          key={v.id}
+          component={NextLink}
+          href={v.href}
+          size="small"
+          aria-current={view === v.id ? "page" : undefined}
+          color={section === v.id ? "primary" : "inherit"}
+          sx={{
+            minWidth: 0,
+            px: 1.25,
+            whiteSpace: "nowrap",
+            fontWeight: 600,
+            color: section === v.id ? undefined : "text.secondary",
+            bgcolor: section === v.id ? "action.selected" : undefined,
+          }}
+        >
+          {mobile ? v.short : v.label}
+        </Button>
+      ))}
+    </Stack>
+  );
+
   return (
     <SendContext.Provider value={send}>
       <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default" }}>
         <AppBar position="sticky" sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-          <Toolbar sx={{ gap: { xs: 1, sm: 1.5 }, minHeight: { xs: 56 }, px: { xs: 1.5, sm: 2.5 } }}>
+          <Toolbar sx={{ gap: { xs: 1, sm: 1.5 }, minHeight: { xs: 56 }, px: { xs: 2, sm: 2.5 } }}>
             <Stack direction="row" spacing={{ xs: 0.75, sm: 1.25 }} sx={{ alignItems: "baseline", flex: 1, minWidth: 0 }}>
-              {/* Slightly smaller on phones so the name and menu share one row. */}
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700, fontSize: { xs: "0.9375rem", sm: "1.25rem" } }}>
+              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700, fontSize: { xs: "1.125rem", sm: "1.25rem" } }}>
                 <Box component={NextLink} href="/" sx={{ color: "inherit", textDecoration: "none", borderRadius: 0.5, "&:hover": { color: "primary.main" }, "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 } }}>
                   {SITE_NAME}
                 </Box>
               </Typography>
-              <Stack component="nav" aria-label="Pages" direction="row" spacing={0.5}>
-                {VIEWS.map((v) => (
-                  <Button
-                    key={v.id}
-                    component={NextLink}
-                    href={v.href}
-                    size="small"
-                    aria-current={view === v.id ? "page" : undefined}
-                    color={section === v.id ? "primary" : "inherit"}
-                    sx={{
-                      minWidth: 0,
-                      px: { xs: 0.75, sm: 1.25 },
-                      whiteSpace: "nowrap",
-                      fontWeight: 600,
-                      color: section === v.id ? undefined : "text.secondary",
-                      bgcolor: section === v.id ? "action.selected" : undefined,
-                    }}
-                  >
-                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                      {v.label}
-                    </Box>
-                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                      {v.short}
-                    </Box>
-                  </Button>
-                ))}
-              </Stack>
+              {!mobile && nav}
             </Stack>
             {!mobile && canEdit && view === "board" && (
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => useAnimalForm.getState().openCreate()}>
@@ -139,9 +146,10 @@ export default function BoardApp({
                 </Typography>
               </Box>
             )}
+            <ThemeToggle />
             <form action={logout}>
               {mobile ? (
-                // Phones: an icon, so the title and menu fit on one line.
+                // Phones: an icon, to leave room for the name.
                 <IconButton type="submit" aria-label="Sign out" sx={{ color: "text.secondary" }}>
                   <Logout />
                 </IconButton>
@@ -153,9 +161,10 @@ export default function BoardApp({
             </form>
             {!mobile && <Bell />}
           </Toolbar>
+          {mobile && nav}
         </AppBar>
 
-        {!canEdit && (
+        {!canEdit && view !== "donate" && (
           <Alert severity="info" sx={{ mx: { xs: 2, sm: 2.5 }, mt: 1.5 }}>
             {welcome ? <strong>Welcome, {me.name}! </strong> : null}
             You can see every animal and follow the ones you care about. If you volunteer with the rescue, a coordinator
@@ -170,7 +179,10 @@ export default function BoardApp({
           </Typography>
         )}
 
-        {board ? (
+        {view === "donate" ? (
+          // Doesn't need the board, so it shows straight away.
+          <DonateContent />
+        ) : board ? (
           view === "animals" ? (
             <AnimalDirectory />
           ) : view === "animal" && animalId ? (

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { SITE_NAME } from "@/lib/site";
+import { getUser } from "@safe-paws/db";
+import BoardApp from "@/components/BoardClient";
 import { DonatePage } from "@/components/DonatePage";
 import { getSession } from "@/lib/auth/session";
+import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Donate · ${SITE_NAME}`,
@@ -9,7 +11,13 @@ export const metadata: Metadata = {
     "Please consider donating to help our dogs. Your donation goes directly towards food, shelter, medication, vet visits and many other essentials.",
 };
 
-/** Public: anyone can donate, signed in or not. The details live in lib/donation.ts. */
+/**
+ * Public: anyone can donate. Signed-in people see it inside the app, with the
+ * same menu as the other pages; visitors see the public header.
+ * The details live in lib/donation.ts.
+ */
 export default async function Donate() {
-  return <DonatePage signedIn={!!(await getSession())} />;
+  const session = await getSession();
+  const user = session ? await getUser(session.uid) : null;
+  return user ? <BoardApp initialMe={user} view="donate" /> : <DonatePage />;
 }

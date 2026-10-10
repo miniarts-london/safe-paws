@@ -34,8 +34,8 @@ type Props = {
 
 const ACCEPT = Object.keys(UPLOAD_TYPES).join(",");
 
-/** XHR rather than fetch because it reports upload progress. */
-function upload(file: File, onProgress: (fraction: number) => void) {
+/** Through this server (local development). XHR rather than fetch because it reports upload progress. */
+function uploadViaServer(file: File, onProgress: (fraction: number) => void) {
   return new Promise<PickedMedia>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/media");
@@ -53,6 +53,53 @@ function upload(file: File, onProgress: (fraction: number) => void) {
     body.append("file", file);
     xhr.send(body);
   });
+}
+
+/**
+ * Straight from the browser to the private Blob store (on Vercel, which won't
+ * take large files through the server), then the server checks and records it.
+ */
+async function uploadDirect(file: File, onProgress: (fraction: number) => void): Promise<PickedMedia> {
+  const { upload: toBlob } = await import("@vercel/blob/client");
+  const id = crypto.randomUUID();
+  try {
+    await toBlob(`media/${id}`, file, {
+      access: "private",
+      handleUploadUrl: "/api/media/upload",
+      clientPayload: JSON.stringify({ type: file.type, size: file.size }),
+      contentType: file.type,
+      multipart: file.size > 8 * 1024 * 1024, // big videos go up in parallel parts, with retries
+      onUploadProgress: ({ percentage }) => onProgress(Math.min(percentage, 99) / 100),
+    });
+  } catch (err) {
+    // The token route's message (e.g. "too large") comes back inside the error.
+    const text = (err as Error).message ?? "";
+    throw new Error(/limit is|Use a JPEG|staff|Sign in/.test(text) ? text.replace(/^.*?:\s*/, "") : "The upload failed. Check your connection and try again.");
+  }
+  const res = await fetch("/api/media/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, name: file.name }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { id?: string; kind?: "photo" | "video"; name?: string; error?: string };
+  if (res.status !== 201 || !json.id || !json.kind) throw new Error(json.error ?? "The upload failed. Try again.");
+  onProgress(1);
+  return { id: json.id, kind: json.kind, name: json.name ?? file.name };
+}
+
+/** Asked once per page: does this site upload straight to Blob? */
+let direct: Promise<boolean> | null = null;
+const usesDirect = () =>
+  (direct ??= fetch("/api/media/upload")
+    .then((r) => (r.ok ? r.json() : { direct: false }))
+    .then((j: { direct?: boolean }) => !!j.direct)
+    .catch(() => {
+      direct = null; // try again next time
+      return false;
+    }));
+
+async function upload(file: File, onProgress: (fraction: number) => void) {
+  return (await usesDirect()) ? uploadDirect(file, onProgress) : uploadViaServer(file, onProgress);
 }
 
 /** Checks a file before uploading, with the same limits the server enforces. */

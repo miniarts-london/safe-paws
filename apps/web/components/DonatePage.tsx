@@ -3,24 +3,36 @@
 import AccountBalanceOutlined from "@mui/icons-material/AccountBalanceOutlined";
 import Check from "@mui/icons-material/Check";
 import ContentCopy from "@mui/icons-material/ContentCopy";
+import OpenInNew from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
-import { BANK, PAYPAL_EMAIL } from "@/lib/donation";
+import { BANK, PAYPAL_EMAIL, PAYPAL_ME_URL, PAYPAL_URL } from "@/lib/donation";
 import { visuallyHidden } from "@/lib/visuallyHidden";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
-export function DonatePage({ signedIn }: { signedIn: boolean }) {
+/** The public page, for visitors who aren't signed in. Signed-in people see the same content inside the app. */
+export function DonatePage() {
+  return (
+    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default" }}>
+      <SiteHeader signedIn={false} />
+      <DonateContent />
+      <SiteFooter />
+    </Box>
+  );
+}
+
+/** How to donate: bank transfer and PayPal, each detail with a copy button. */
+export function DonateContent() {
   const [announce, setAnnounce] = useState("");
 
   return (
-    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default" }}>
-      <SiteHeader signedIn={signedIn} />
-
+    <>
       <Box
         component="main"
         sx={{
@@ -121,7 +133,23 @@ export function DonatePage({ signedIn }: { signedIn: boolean }) {
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2, lineHeight: 1.6 }}>
                 Please choose <strong>Friends and family</strong> when you send, so the whole amount reaches the dogs.
+                {!PAYPAL_ME_URL && <> On PayPal, paste the email above as who to send to.</>}
               </Typography>
+              <Button
+                href={PAYPAL_URL}
+                target="_blank"
+                rel="noopener"
+                variant="contained"
+                fullWidth
+                endIcon={<OpenInNew />}
+                sx={{ mt: 2.5, py: 1.25 }}
+              >
+                Pay with PayPal
+                <Box component="span" sx={visuallyHidden}>
+                  {" "}
+                  (opens in a new tab)
+                </Box>
+              </Button>
             </Card>
           </Box>
 
@@ -131,11 +159,10 @@ export function DonatePage({ signedIn }: { signedIn: boolean }) {
         </Stack>
       </Box>
 
-      <SiteFooter />
       <Box role="status" sx={visuallyHidden}>
         {announce}
       </Box>
-    </Box>
+    </>
   );
 }
 

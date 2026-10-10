@@ -133,7 +133,9 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 
 - **Photos and videos upload as soon as they're picked**, with a progress bar each, so saving is instant. Save waits if anything is still uploading.
 - **Uploads are checked three times:** by type (allowlist; no SVG, since it can carry script), by size (15 MB photos, 100 MB videos), and by the file's first bytes, so a renamed web page can't pass as a photo. The same limits run in the browser first for a quick answer.
-- **Media is private:** `/api/media/<id>` serves files only to signed-in people (web cookie or the app's Bearer token), with `nosniff`, and supports byte ranges so videos can seek (Safari needs this to play at all). The files themselves are stored in `apps/web/.uploads/`, and their details (type, size, who uploaded them) in Postgres; `apps/web/lib/media.ts` is the one file to change for S3 or similar.
+- **Media is private:** `/api/media/<id>` serves files only to signed-in people (web cookie or the app's Bearer token), with `nosniff`, and supports byte ranges so videos can seek (Safari needs this to play at all). Where the files live depends on where the site runs, all handled in `apps/web/lib/media.ts`; their details (type, size, who uploaded them) are in Postgres either way.
+  - **On Vercel: a private Vercel Blob store.** Vercel's servers can't keep files, and only accept requests up to 4.5 MB, so the browser uploads each file straight to Blob with a short-lived token from `/api/media/upload` (staff only, one allowed type and size, a fresh `media/<uuid>` path). Then `/api/media/register` checks what actually arrived (type, size, first bytes) before recording it, and deletes anything that fails. Turned on by `BLOB_READ_WRITE_TOKEN`, which Vercel adds when you connect a Blob store to the project.
+  - **Locally: `apps/web/.uploads/`**, through `/api/media`, so development needs no setup. The phone app uses this route too (up to 4.5 MB per file on Vercel).
 - **The server validates the details with the same zod schema** as the form, gives the new animal an id the browser chose (so it can open straight away), puts it at the top of *Reported*, and makes the person who registered it a follower.
 - **Notifications:** coordinators hear about every new animal and the vet is told it may need a check. New photos or videos notify followers ("Mona added 1 new photo of Luna, who you sponsor."); small corrections don't.
 - The mobile app shows the new details and the photos (sending its token to load them). Registering from the app is a good next step.
@@ -180,7 +182,7 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 ## Next steps
 
 - [ ] Find out from the rescue how they really work: stages, roles, what goes wrong today
-- [ ] Daily Postgres backups (and the uploads folder) before the rescue relies on it
+- [ ] Daily Postgres backups (and the Blob store) before the rescue relies on it
 - [ ] Rate-limit sign-ups and sign-ins, and confirm email addresses
 - [ ] Sign up from the mobile app (for now the app's members sign up on the website)
 - [ ] Let coordinators change or remove staff roles, not just grant them

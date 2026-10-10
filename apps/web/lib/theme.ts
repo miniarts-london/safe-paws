@@ -7,8 +7,9 @@ import { createTheme } from "@mui/material/styles";
  * (#ADEBB3) for soft highlights (following, unread, the column a card is over).
  * Mint is pale, so lines and text that must stand out use mint.dark, a deeper
  * green with enough contrast. In dark mode plum is lightened so it stays readable.
- * Light and dark follow the system setting through CSS variables,
- * so there's no flash of the wrong theme on load.
+ * Light and dark start from the device's setting, and people can switch
+ * (ThemeToggle). A small script in the layout applies the right one before
+ * the page draws, so there's no flash of the wrong theme.
  */
 
 /** Placeholder colours when an animal has no photo yet, with the colour of the initial on top. */
@@ -40,7 +41,8 @@ declare module "@mui/material/Button" {
 }
 
 export const theme = createTheme({
-  cssVariables: { colorSchemeSelector: "media" },
+  // A class on <html> rather than a media query, so people can switch (see ThemeToggle).
+  cssVariables: { colorSchemeSelector: "class" },
   colorSchemes: {
     light: {
       palette: {

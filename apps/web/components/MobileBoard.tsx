@@ -33,6 +33,8 @@ type Tab = "board" | "following" | "alerts";
 
 /** Height of the bottom navigation, so toasts and content can clear it. */
 export const MOBILE_NAV_HEIGHT = 64;
+/** The header on phones: the name and buttons (56px) with the menu on a row of its own (44px). */
+export const MOBILE_HEADER_HEIGHT = 100;
 
 export function MobileBoard() {
   const me = useBoard((s) => s.users.find((u) => u.id === s.me));
@@ -95,7 +97,7 @@ function StageView({ stage, onStage }: { stage: StageId; onStage: (s: StageId) =
 
   return (
     <>
-      <Box sx={{ position: "sticky", top: 56, zIndex: 2, bgcolor: "background.default", borderBottom: 1, borderColor: "divider" }}>
+      <Box sx={{ position: "sticky", top: MOBILE_HEADER_HEIGHT, zIndex: 2, bgcolor: "background.default", borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={stage}
           onChange={(_, v: StageId) => onStage(v)}

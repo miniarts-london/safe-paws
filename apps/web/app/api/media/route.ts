@@ -1,9 +1,17 @@
-import { saveUpload, sessionFrom, UploadError } from "@/lib/media";
+import { requireUploader, saveUpload, UploadError } from "@/lib/media";
 
-/** Upload one photo or video. The form uploads each file as soon as it's picked. */
+/**
+ * Upload one photo or video through this server: used locally, and by the
+ * phone app. On Vercel the website uploads straight to Blob instead (see
+ * ./upload), because Vercel only accepts requests up to 4.5 MB here.
+ */
 export async function POST(req: Request) {
-  const session = sessionFrom(req);
-  if (!session) return Response.json({ error: "Sign in to upload." }, { status: 401 });
+  let userId: string;
+  try {
+    userId = await requireUploader(req);
+  } catch (err) {
+    return Response.json({ error: (err as Error).message }, { status: 401 });
+  }
 
   let form: FormData;
   try {
@@ -15,7 +23,7 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) return Response.json({ error: "No file was sent." }, { status: 400 });
 
   try {
-    const meta = await saveUpload(file, session.uid);
+    const meta = await saveUpload(file, userId);
     return Response.json({ id: meta.id, kind: meta.kind, name: meta.name, url: `/api/media/${meta.id}` }, { status: 201 });
   } catch (err) {
     if (err instanceof UploadError) return Response.json({ error: err.message }, { status: 400 });
