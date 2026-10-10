@@ -50,6 +50,48 @@ const sunArc = keyframes`
   50%  { transform: translate3d(32vw, 0, 0); }
   100% { transform: translate3d(64vw, 10vh, 0); }
 `;
+/**
+ * Sunrise, once, when the page opens (light mode). The sky starts a pale
+ * dawn blue, warms to soft gold as the sun comes up over the horizon, then
+ * clears to the day's blue. After that the sun drifts slowly as before.
+ */
+const SUNRISE_S = 18;
+const dawnFade = keyframes`
+  0%, 15% { opacity: 1; }
+  45%     { opacity: 0; }
+  100%    { opacity: 0; }
+`;
+const warmGlow = keyframes`
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+`;
+const rise = keyframes`
+  from { transform: translate3d(0, 62vh, 0) scale(0.8); opacity: 0.6; }
+  to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+`;
+
+/**
+ * Sunset, once, when the page opens in dark mode: a warm evening sky with
+ * the sun sinking below the horizon, deepening into night as the stars come out.
+ */
+const SUNSET_S = 18;
+const duskFade = keyframes`
+  0%, 20% { opacity: 1; }
+  70%     { opacity: 0.25; }
+  100%    { opacity: 0; }
+`;
+const set = keyframes`
+  from { transform: translate3d(0, 0, 0); opacity: 0.85; }
+  80%  { opacity: 0.55; }
+  to   { transform: translate3d(0, 42vh, 0); opacity: 0; }
+`;
+const starsIn = keyframes`
+  0%, 30% { opacity: 0; }
+  100%    { opacity: 1; }
+`;
+
 const twinkle = keyframes`
   0%, 100% { opacity: var(--lo); }
   50%      { opacity: 1; }
@@ -117,6 +159,8 @@ export function NatureBackdrop() {
         backgroundImage: "var(--sky)",
       })}
     >
+      <Sunrise />
+      <Sunset />
       <Sun />
       <Stars />
       <Birds />
@@ -126,7 +170,67 @@ export function NatureBackdrop() {
   );
 }
 
-/** Daytime: a soft glow of sunlight drifting across the sky over a few minutes. */
+/** Morning sky layers over the day's blue: pale dawn first, then a warm glow, both fading out. */
+function Sunrise() {
+  const layer = { position: "absolute", inset: 0, opacity: 0, "@media (prefers-reduced-motion: reduce)": { display: "none" } } as const;
+  return (
+    <Box sx={(t) => ({ ...t.applyStyles("dark", { display: "none" }) })}>
+      <Box
+        sx={{
+          ...layer,
+          background: "linear-gradient(180deg, #d6e3ee 0%, #e4ecf2 50%, #eef1ee 80%, #f2efe6 100%)",
+          animation: `${dawnFade} ${SUNRISE_S}s ease-in-out forwards`,
+        }}
+      />
+      <Box
+        sx={{
+          ...layer,
+          background: "linear-gradient(180deg, #f6e7cf 0%, #fbe5c4 40%, #fdd9a8 75%, #f9cf98 100%)",
+          animation: `${warmGlow} ${SUNRISE_S}s ease-in-out forwards`,
+        }}
+      />
+    </Box>
+  );
+}
+
+/** Dark mode: an evening sky over the night, with the sun going down, all fading as night falls. */
+function Sunset() {
+  const layer = { position: "absolute", inset: 0, "@media (prefers-reduced-motion: reduce)": { display: "none" } } as const;
+  return (
+    <Box sx={(t) => ({ display: "none", ...t.applyStyles("dark", { display: "block" }) })}>
+      <Box
+        sx={{
+          ...layer,
+          opacity: 0,
+          // Deep at the top where the words are, warm only down by the horizon.
+          background: "linear-gradient(180deg, #1c1f3a 0%, #34284a 35%, #5e3550 58%, #b4605a 80%, #ec9d5e 93%, #f4b86c 100%)",
+          animation: `${duskFade} ${SUNSET_S}s ease-in-out forwards`,
+        }}
+      />
+      <Box
+        sx={{
+          ...layer,
+          inset: "auto",
+          right: "14vw",
+          bottom: { xs: 90, sm: 130 },
+          width: { xs: 100, sm: 150 },
+          height: { xs: 100, sm: 150 },
+          borderRadius: "50%",
+          opacity: 0,
+          background:
+            // Soft: a gentle warm disc with a faint glow, not a bright light.
+            "radial-gradient(circle, rgba(255, 210, 160, 0.7) 0%, rgba(250, 170, 115, 0.5) 26%, rgba(235, 125, 90, 0.16) 50%, rgba(235, 125, 90, 0) 68%)",
+          animation: `${set} ${SUNSET_S * 0.85}s ease-in forwards`,
+        }}
+      />
+    </Box>
+  );
+}
+
+/**
+ * Daytime: the sun rises over the horizon as the page opens, then its soft
+ * glow drifts slowly across the sky over a few minutes.
+ */
 function Sun() {
   return (
     <Box
@@ -134,16 +238,25 @@ function Sun() {
         position: "absolute",
         left: "-12vw",
         top: "-14vh",
-        width: { xs: 360, sm: 620 },
-        height: { xs: 360, sm: 620 },
-        borderRadius: "50%",
-        background:
-          "radial-gradient(circle, rgba(255, 236, 190, 0.95) 0%, rgba(255, 220, 150, 0.55) 18%, rgba(255, 214, 140, 0.22) 40%, rgba(255, 214, 140, 0) 68%)",
-        animation: `${sunArc} 240s ease-in-out infinite alternate`,
-        "@media (prefers-reduced-motion: reduce)": { animation: "none", transform: "translate3d(48vw, 2vh, 0)" },
+        animation: `${rise} ${SUNRISE_S * 0.75}s cubic-bezier(0.2, 0.6, 0.3, 1) forwards`,
+        "@media (prefers-reduced-motion: reduce)": { animation: "none" },
         ...t.applyStyles("dark", { display: "none" }),
       })}
-    />
+    >
+      <Box
+        sx={{
+          width: { xs: 360, sm: 620 },
+          height: { xs: 360, sm: 620 },
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(255, 236, 190, 0.95) 0%, rgba(255, 220, 150, 0.55) 18%, rgba(255, 214, 140, 0.22) 40%, rgba(255, 214, 140, 0) 68%)",
+          // Starts drifting once it has risen.
+          animation: `${sunArc} 240s ease-in-out ${SUNRISE_S * 0.75}s infinite alternate`,
+          transform: "translate3d(0, 10vh, 0)",
+          "@media (prefers-reduced-motion: reduce)": { animation: "none", transform: "translate3d(48vw, 2vh, 0)" },
+        }}
+      />
+    </Box>
   );
 }
 
@@ -159,7 +272,17 @@ function Stars() {
     lo: round(0.15 + hash(i * 7 + 6) * 0.35),
   }));
   return (
-    <Box sx={(t) => ({ display: "none", ...t.applyStyles("dark", { display: "block" }) })}>
+    <Box
+      sx={(t) => ({
+        display: "none",
+        ...t.applyStyles("dark", {
+          display: "block",
+          // The stars come out as the sunset fades.
+          animation: `${starsIn} ${SUNSET_S}s ease-in forwards`,
+          "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+        }),
+      })}
+    >
       {stars.map((s, i) => (
         <Box
           key={i}

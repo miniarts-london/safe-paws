@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return Response.json({ id: meta.id, kind: meta.kind, name: meta.name, url: `/api/media/${meta.id}` }, { status: 201 });
   } catch (err) {
     if (err instanceof UploadError) return Response.json({ error: err.message }, { status: 400 });
-    console.error(err);
-    return Response.json({ error: "The upload failed. Try again." }, { status: 500 });
+    console.error("[media] register failed:", err);
+    return Response.json({ error: `The upload failed: ${(err as Error).message}` }, { status: 500 });
   }
 }

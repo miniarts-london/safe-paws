@@ -72,9 +72,10 @@ async function uploadDirect(file: File, onProgress: (fraction: number) => void):
       onUploadProgress: ({ percentage }) => onProgress(Math.min(percentage, 99) / 100),
     });
   } catch (err) {
-    // The token route's message (e.g. "too large") comes back inside the error.
-    const text = (err as Error).message ?? "";
-    throw new Error(/limit is|Use a JPEG|staff|Sign in/.test(text) ? text.replace(/^.*?:\s*/, "") : "The upload failed. Check your connection and try again.");
+    // Show the real reason (e.g. "too large", or a storage problem), without the library's prefix.
+    console.error("Upload to storage failed:", err);
+    const text = ((err as Error).message ?? "").replace(/^Vercel Blob:\s*/i, "").trim();
+    throw new Error(text ? `The upload failed: ${text}` : "The upload failed. Check your connection and try again.");
   }
   const res = await fetch("/api/media/register", {
     method: "POST",

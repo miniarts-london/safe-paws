@@ -1,9 +1,17 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { BLOB_PATH, checkFile, requireUploader, usingBlob } from "@/lib/media";
 
-/** Tells the form how to upload: straight to Blob (on Vercel), or through this server. */
+/**
+ * Tells the form how to upload: straight to Blob (on Vercel), or through this server.
+ * Also handy for checking the setup: open /api/media/upload on the live site.
+ */
 export function GET() {
-  return Response.json({ direct: usingBlob() });
+  return Response.json({
+    direct: usingBlob(),
+    onVercel: !!process.env.VERCEL,
+    blobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+    blobStore: !!process.env.BLOB_STORE_ID,
+  });
 }
 
 /**
@@ -29,6 +37,7 @@ export async function POST(req: Request) {
     });
     return Response.json(json);
   } catch (err) {
+    console.error("[media] upload token refused:", err);
     return Response.json({ error: (err as Error).message }, { status: 400 });
   }
 }

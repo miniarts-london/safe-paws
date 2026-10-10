@@ -14,8 +14,9 @@ type Props = { signedIn: boolean };
 
 export function HomePage({ signedIn }: Props) {
   return (
-    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default" }}>
-      <SiteHeader signedIn={signedIn} />
+    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default", position: "relative" }}>
+      {/* Floats over the sky, which runs right up to the top of the page. */}
+      <SiteHeader signedIn={signedIn} overlay />
 
       <Box
         component="main"
@@ -24,7 +25,7 @@ export function HomePage({ signedIn }: Props) {
           display: "grid",
           placeItems: "center",
           px: { xs: 2, sm: 3 },
-          py: { xs: 6, sm: 10 },
+          pt: { xs: 14, sm: 18 }, // room for the floating top bar
           position: "relative",
           overflow: "hidden",
           // Room at the bottom for the dunes and palms.

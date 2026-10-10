@@ -97,6 +97,14 @@ async function record(meta: MediaMeta, undo: () => Promise<unknown>) {
 
 /** A file sent through this server (local development, and small files from the phone app). */
 export async function saveUpload(file: File, userId: string): Promise<MediaMeta> {
+  // On Vercel the disk can't keep files: say what's missing rather than failing quietly.
+  if (process.env.VERCEL && !usingBlob()) {
+    throw new UploadError(
+      process.env.BLOB_STORE_ID
+        ? "Photo storage is connected but has no BLOB_READ_WRITE_TOKEN. Check the Blob store's environment variables in Vercel, then redeploy."
+        : "Photo storage isn't set up on this site yet. Connect a private Vercel Blob store to the project, then redeploy.",
+    );
+  }
   const { kind } = checkFile(file.type, file.size);
   const firstBytes = Buffer.from(await file.slice(0, 16).arrayBuffer());
   if (!looksLike(kind, firstBytes)) throw new UploadError(`That file doesn't look like a real ${kind}.`);
