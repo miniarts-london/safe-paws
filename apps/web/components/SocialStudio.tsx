@@ -2,6 +2,7 @@
 
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import Check from "@mui/icons-material/Check";
 import ContentCopy from "@mui/icons-material/ContentCopy";
 import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
 import IosShare from "@mui/icons-material/IosShare";
@@ -262,36 +263,35 @@ export function SocialStudio() {
   };
 
   /**
-   * Opens the phone's share menu with the photo, so it can go to Instagram, a personal
-   * Facebook profile, Stories, WhatsApp… The text is copied too: Instagram ignores text
-   * that comes with a photo, so it's pasted as the caption.
-   * Where there's no share menu (most desktop browsers), copies the text and saves the photo.
+   * Shares the photo through the phone's share menu (Instagram, Facebook, WhatsApp…).
+   * Only the photo: Instagram and Facebook throw away any text another app sends them
+   * (Meta's rules), and text with a link in it makes some apps share just a link card.
+   * So the caption goes on the clipboard, to paste in the app.
+   * Where there's no share menu (most desktop browsers), the photo is saved instead.
    */
   const share = async () => {
+    if (!photo) return;
     setNotice(null);
-    // Not awaited: Safari only opens the share menu straight from the tap.
-    const copied = navigator.clipboard?.writeText(post).then(() => true, () => false) ?? Promise.resolve(false);
-    const files = photo ? [photo.file] : [];
-    const data: ShareData = files.length ? { files, text: post } : { text: post };
-    if (navigator.share && (!navigator.canShare || navigator.canShare(data))) {
+    // Copy the caption as well, in case they skipped that step. Not awaited: Safari
+    // only opens the share menu straight from the tap.
+    void navigator.clipboard?.writeText(post).catch(() => {});
+    const name = `${(animal?.name ?? "egypt-animal-sos").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`;
+    const file = new File([photo.file], name, { type: "image/jpeg" });
+    const data: ShareData = { files: [file] };
+    if (navigator.share && navigator.canShare?.(data)) {
       try {
         await navigator.share(data);
-        if (await copied) setNotice({ kind: "info", text: "The post is copied too. On Instagram, paste it as the caption." });
+        setNotice({ kind: "info", text: "Now paste the caption in the app: tap the caption box, then Paste." });
       } catch (e) {
-        if ((e as Error).name !== "AbortError") setNotice({ kind: "error", text: "Couldn't open the share menu. Copy the post and save the photo instead." });
+        if ((e as Error).name !== "AbortError") setNotice({ kind: "error", text: "Couldn't open the share menu. Try again, or save the photo and post it from the app." });
       }
       return;
     }
-    if (photo) {
-      const a = document.createElement("a");
-      a.href = photo.preview;
-      a.download = `${(animal?.name ?? "egypt-animal-sos").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`;
-      a.click();
-    }
-    setNotice({
-      kind: "info",
-      text: `${(await copied) ? "The post is copied" : "Copy the post above"}${photo ? " and the photo is saved" : ""}. Open Instagram or Facebook and paste it in. On a phone, this button opens the share menu instead.`,
-    });
+    const a = document.createElement("a");
+    a.href = photo.preview;
+    a.download = name;
+    a.click();
+    setNotice({ kind: "info", text: `The photo is saved as ${name} and the caption is copied. Open Instagram or Facebook, add the photo and paste the caption. (On a phone, Share photo opens the share menu instead.)` });
   };
 
   const animalPhotos = animal ? photos(animal) : [];
@@ -477,12 +477,23 @@ export function SocialStudio() {
             <Box sx={{ mb: 1.25 }}>
               <Typography sx={{ fontWeight: 700 }}>Instagram, Facebook and more</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Opens your phone&apos;s share menu with the photo{photo ? "" : " (add one above for Instagram)"}, and copies the post to paste as the caption.
+                From your phone: copy the caption, share the photo to the app, then paste the caption there. (Instagram and Facebook
+                don&apos;t let other apps fill in the text for you.)
               </Typography>
             </Box>
-            <Button variant="contained" startIcon={<IosShare />} onClick={share} disabled={!post.trim() || !!busy}>
-              Share
-            </Button>
+            <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", rowGap: 1.5, alignItems: "center" }}>
+              <Button variant="outlined" startIcon={copied ? <Check /> : <ContentCopy />} onClick={copy} disabled={!post.trim()}>
+                {copied ? "Caption copied" : "1. Copy caption"}
+              </Button>
+              <Button variant="contained" startIcon={<IosShare />} onClick={share} disabled={!photo || !post.trim() || !!busy}>
+                2. Share photo
+              </Button>
+              {!photo && (
+                <Typography variant="body2" color="text.secondary">
+                  Add a photo above first.
+                </Typography>
+              )}
+            </Stack>
           </Box>
           {!status ? (
             <CircularProgress size={24} aria-label="Loading" />
@@ -570,7 +581,7 @@ function Network({
 }) {
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap", mb: 1.25 }}>
+      <Stack direction="row" useFlexGap sx={{ alignItems: "baseline", flexWrap: "wrap", columnGap: 1, mb: 1.25 }}>
         <Typography sx={{ fontWeight: 700 }}>{name}</Typography>
         <Typography variant="body2" color="text.secondary">
           {connectedAs ? `Connected as ${connectedAs}.` : note}

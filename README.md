@@ -148,7 +148,7 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 
 1. **What it's about:** pick an animal (optional: its facts, last few updates and page link go to Claude), say what the post is about, and choose a tone (heartfelt, a story, an appeal for help, good news). Add a photo: one of the animal's, or one from your device. Photos are turned into a JPEG of at most 2048px in the browser, so they fit Vercel's 4.5 MB request limit and every network accepts them.
 2. **Your post:** Claude's draft, which you can edit freely (LinkedIn allows 3,000 characters), or copy.
-3. **Share it:** **Share** opens the phone's share menu with the photo, for Instagram, a personal Facebook profile, Stories, WhatsApp and so on, and copies the post to paste as the caption (Instagram ignores text that comes with a photo). On a computer without a share menu it copies the post and saves the photo instead. Or connect LinkedIn and/or Facebook once and post straight from here; Facebook posts go to a Page you manage.
+3. **Share it:** for Instagram, Facebook (a personal profile or the Page), Stories, WhatsApp and so on: **Copy caption**, then **Share photo** opens the phone's share menu with just the photo, and you paste the caption in the app. Instagram and Facebook throw away text sent by other apps, so it can't be filled in for them. On a computer without a share menu, the photo is saved instead. Or connect LinkedIn and/or Facebook once and post text and photo together straight from here; Facebook posts go to a Page you manage.
 
 How it's kept safe:
 - The keys live only in environment variables on the server and are never sent to the browser.
