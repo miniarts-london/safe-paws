@@ -26,6 +26,7 @@ export const TONES = {
   story: "Tell it as a short story",
   appeal: "An appeal for help (donations, sponsors or a home), hopeful not desperate",
   "good-news": "Good news and thanks",
+  updates: "A news update: share what's happened recently, using the updates given (most recent first)",
 } as const;
 export type Tone = keyof typeof TONES;
 
@@ -42,15 +43,26 @@ function animalFacts(a: Animal, origin: string) {
     .join("\n");
 }
 
-export async function draftPost(opts: { topic: string; tone: Tone; animal?: Animal; origin: string; photo?: Buffer }) {
+/** The latest updates across the whole rescue, for an "Updates" post with no animal picked. */
+export function latestUpdates(animals: Animal[], origin: string, count = 3) {
+  const all = animals
+    .flatMap((a) => a.notes.map((n) => ({ a, n })))
+    .sort((x, y) => y.n.at - x.n.at)
+    .slice(0, count);
+  if (all.length === 0) return "";
+  return `Latest updates from the rescue:\n${all.map(({ a, n }) => `- ${a.name} (${origin}/animals/${a.id}): ${n.text}`).join("\n")}`;
+}
+
+export async function draftPost(opts: { topic: string; tone: Tone; animal?: Animal; updates?: string; origin: string; photo?: Buffer }) {
   const { apiKey, model } = socialConfig().anthropic;
   if (!apiKey) throw new SocialError("Add ANTHROPIC_API_KEY to the site's environment variables, then try again.", 503);
 
   const text = [
     `Tone: ${TONES[opts.tone]}`,
     opts.animal && animalFacts(opts.animal, opts.origin),
+    opts.updates,
     `Donate page: ${opts.origin}/donate`,
-    `What the post should be about:\n${opts.topic}`,
+    opts.topic && `What the post should be about:\n${opts.topic}`,
   ]
     .filter(Boolean)
     .join("\n\n");

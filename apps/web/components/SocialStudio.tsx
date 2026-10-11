@@ -46,6 +46,7 @@ const TONES = [
   { id: "story", label: "Story" },
   { id: "appeal", label: "Appeal for help" },
   { id: "good-news", label: "Good news" },
+  { id: "updates", label: "Updates" },
 ] as const;
 
 const LINKEDIN_MAX = 3000;
@@ -152,6 +153,7 @@ export function SocialStudio() {
   const [pageId, setPageId] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [copied, setCopied] = useState(false);
+  const [shareNote, setShareNote] = useState<Notice>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loadStatus = useCallback(() => {
@@ -263,35 +265,37 @@ export function SocialStudio() {
   };
 
   /**
-   * Shares the photo through the phone's share menu (Instagram, Facebook, WhatsApp…).
-   * Only the photo: Instagram and Facebook throw away any text another app sends them
-   * (Meta's rules), and text with a link in it makes some apps share just a link card.
-   * So the caption goes on the clipboard, to paste in the app.
+   * Opens the phone's share menu (Instagram, Facebook, WhatsApp…) with the photo, if
+   * there is one, or else the text. Instagram and Facebook throw away text sent with a
+   * photo (Meta's rules), which is why the caption is copied first, to paste in the app.
    * Where there's no share menu (most desktop browsers), the photo is saved instead.
    */
   const share = async () => {
-    if (!photo) return;
-    setNotice(null);
-    // Copy the caption as well, in case they skipped that step. Not awaited: Safari
-    // only opens the share menu straight from the tap.
+    setShareNote(null);
+    // Copy the caption too, in case that step was skipped. Not awaited: Safari only
+    // opens the share menu straight from the tap.
     void navigator.clipboard?.writeText(post).catch(() => {});
     const name = `${(animal?.name ?? "egypt-animal-sos").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`;
-    const file = new File([photo.file], name, { type: "image/jpeg" });
-    const data: ShareData = { files: [file] };
-    if (navigator.share && navigator.canShare?.(data)) {
+    const data: ShareData = photo ? { files: [new File([photo.file], name, { type: "image/jpeg" })] } : { text: post };
+    if (navigator.share && (!navigator.canShare || navigator.canShare(data))) {
       try {
         await navigator.share(data);
-        setNotice({ kind: "info", text: "Now paste the caption in the app: tap the caption box, then Paste." });
+        if (photo) setShareNote({ kind: "info", text: "Now paste the caption in the app: tap the caption box, then Paste." });
       } catch (e) {
-        if ((e as Error).name !== "AbortError") setNotice({ kind: "error", text: "Couldn't open the share menu. Try again, or save the photo and post it from the app." });
+        if ((e as Error).name !== "AbortError") setShareNote({ kind: "error", text: "Couldn't open the share menu. Try again." });
       }
       return;
     }
-    const a = document.createElement("a");
-    a.href = photo.preview;
-    a.download = name;
-    a.click();
-    setNotice({ kind: "info", text: `The photo is saved as ${name} and the caption is copied. Open Instagram or Facebook, add the photo and paste the caption. (On a phone, Share photo opens the share menu instead.)` });
+    if (photo) {
+      const a = document.createElement("a");
+      a.href = photo.preview;
+      a.download = name;
+      a.click();
+    }
+    setShareNote({
+      kind: "info",
+      text: `${photo ? `The photo is saved as ${name} and the caption is copied` : "The caption is copied"}. Open Instagram or Facebook and paste it in. (On a phone, Post opens the share menu instead.)`,
+    });
   };
 
   const animalPhotos = animal ? photos(animal) : [];
@@ -304,7 +308,7 @@ export function SocialStudio() {
         Social post
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
-        Draft a post with Claude, then share it to Instagram or Facebook from your phone, or post it straight to LinkedIn or the rescue&apos;s Facebook Page. Only coordinators can see this page.
+        Draft a post with Claude, then share it to Instagram, Facebook and more. Only coordinators can see this page.
       </Typography>
 
       {notice && (
@@ -360,12 +364,79 @@ export function SocialStudio() {
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
+              {tone === "updates" && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {animal ? `Claude uses ${animal.name}'s latest updates (up to 3).` : "Claude uses the 3 latest updates from all the animals."}
+                </Typography>
+              )}
             </Box>
 
             <Box>
-              <Typography component="p" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Photo (optional)
-              </Typography>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={busy === "draft" ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeOutlined />}
+                onClick={draft}
+                disabled={!!busy || (topic.trim().length < 8 && !animal && tone !== "updates")}
+              >
+                {busy === "draft" ? "Writing…" : post ? "Write it again" : "Write it with Claude"}
+              </Button>
+              {status && !status.claude && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Claude isn&apos;t set up yet: see “Setting up” below. You can still write the post yourself.
+                </Typography>
+              )}
+            </Box>
+          </Stack>
+        </Card>
+
+        {/* 2. The post */}
+        <Card component="section" aria-labelledby="social-post" sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack direction="row" sx={{ alignItems: "center", mb: 2 }}>
+            <Typography id="social-post" component="h2" variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
+              2. Your post
+            </Typography>
+            <Tooltip title={copied ? "Copied" : "Copy the post"}>
+              <span>
+                <IconButton onClick={copy} disabled={!post} aria-label={copied ? "Post copied" : "Copy the post"}>
+                  <ContentCopy fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+          <TextField
+            id="social-text"
+            label="Post"
+            value={post}
+            onChange={(e) => setPost(e.target.value)}
+            multiline
+            minRows={8}
+            fullWidth
+            placeholder="Write here, or let Claude draft it above. You can edit anything before posting."
+            error={tooLongForLinkedIn}
+            helperText={
+              tooLongForLinkedIn
+                ? `${post.length} characters: LinkedIn allows ${LINKEDIN_MAX}. Shorten it to post there.`
+                : `${post.length} / ${LINKEDIN_MAX} for LinkedIn`
+            }
+          />
+        </Card>
+
+        {/* 3. Share */}
+        <Card component="section" aria-labelledby="social-share" sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography id="social-share" component="h2" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            3. Share it
+          </Typography>
+          <Stack spacing={3}>
+            <Box>
+              <Typography sx={{ fontWeight: 700, mb: 1 }}>1. Copy the caption</Typography>
+              <Button variant="outlined" startIcon={copied ? <Check /> : <ContentCopy />} onClick={copy} disabled={!post.trim()}>
+                {copied ? "Caption copied" : "Copy caption"}
+              </Button>
+            </Box>
+
+            <Box>
+              <Typography sx={{ fontWeight: 700, mb: 1 }}>2. Add a photo (optional)</Typography>
               <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", rowGap: 1.5, alignItems: "center" }}>
                 {photo && (
                   <Box sx={{ position: "relative" }}>
@@ -418,129 +489,75 @@ export function SocialStudio() {
             </Box>
 
             <Box>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={busy === "draft" ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeOutlined />}
-                onClick={draft}
-                disabled={!!busy || (topic.trim().length < 8 && !animal)}
-              >
-                {busy === "draft" ? "Writing…" : post ? "Write it again" : "Write it with Claude"}
-              </Button>
-              {status && !status.claude && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Claude isn&apos;t set up yet: see “Setting up” below. You can still write the post yourself.
-                </Typography>
-              )}
-            </Box>
-          </Stack>
-        </Card>
-
-        {/* 2. The post */}
-        <Card component="section" aria-labelledby="social-post" sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack direction="row" sx={{ alignItems: "center", mb: 2 }}>
-            <Typography id="social-post" component="h2" variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
-              2. Your post
-            </Typography>
-            <Tooltip title={copied ? "Copied" : "Copy the post"}>
-              <span>
-                <IconButton onClick={copy} disabled={!post} aria-label={copied ? "Post copied" : "Copy the post"}>
-                  <ContentCopy fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-          <TextField
-            id="social-text"
-            label="Post"
-            value={post}
-            onChange={(e) => setPost(e.target.value)}
-            multiline
-            minRows={8}
-            fullWidth
-            placeholder="Write here, or let Claude draft it above. You can edit anything before posting."
-            error={tooLongForLinkedIn}
-            helperText={
-              tooLongForLinkedIn
-                ? `${post.length} characters: LinkedIn allows ${LINKEDIN_MAX}. Shorten it to post there.`
-                : `${post.length} / ${LINKEDIN_MAX} for LinkedIn`
-            }
-          />
-        </Card>
-
-        {/* 3. Share */}
-        <Card component="section" aria-labelledby="social-share" sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography id="social-share" component="h2" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            3. Share it
-          </Typography>
-          <Box sx={{ pb: 2.5, mb: 2.5, borderBottom: 1, borderColor: "divider" }}>
-            <Box sx={{ mb: 1.25 }}>
-              <Typography sx={{ fontWeight: 700 }}>Instagram, Facebook and more</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                From your phone: copy the caption, share the photo to the app, then paste the caption there. (Instagram and Facebook
-                don&apos;t let other apps fill in the text for you.)
+              <Typography sx={{ fontWeight: 700, mb: 0.5 }}>3. Post</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>
+                {photo
+                  ? "Opens your phone's share menu with the photo. Pick Instagram, Facebook or another app, then paste the caption there."
+                  : "Opens your phone's share menu with the caption. Pick Facebook, WhatsApp or another app. (Instagram needs a photo.)"}
               </Typography>
-            </Box>
-            <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", rowGap: 1.5, alignItems: "center" }}>
-              <Button variant="outlined" startIcon={copied ? <Check /> : <ContentCopy />} onClick={copy} disabled={!post.trim()}>
-                {copied ? "Caption copied" : "1. Copy caption"}
+              <Button variant="contained" size="large" startIcon={<IosShare />} onClick={share} disabled={!post.trim() || !!busy}>
+                Post
               </Button>
-              <Button variant="contained" startIcon={<IosShare />} onClick={share} disabled={!photo || !post.trim() || !!busy}>
-                2. Share photo
-              </Button>
-              {!photo && (
-                <Typography variant="body2" color="text.secondary">
-                  Add a photo above first.
-                </Typography>
+              {shareNote && (
+                <Alert severity={shareNote.kind} onClose={() => setShareNote(null)} sx={{ mt: 1.5 }} role={shareNote.kind === "error" ? "alert" : "status"}>
+                  {shareNote.text}
+                </Alert>
               )}
-            </Stack>
-          </Box>
-          {!status ? (
-            <CircularProgress size={24} aria-label="Loading" />
-          ) : (
-            <Stack spacing={2.5} divider={<Box sx={{ borderTop: 1, borderColor: "divider" }} />}>
-              <Network
-                name="LinkedIn"
-                note="Posts on your own LinkedIn profile."
-                configured={status.linkedIn.configured}
-                connectedAs={status.linkedIn.connectedAs}
-                onConnect={() => connect("/api/social/linkedin/connect")}
-                onDisconnect={() => disconnect("linkedin")}
-                action={
-                  <Button variant="contained" onClick={() => publish("linkedin")} disabled={!ready || tooLongForLinkedIn}>
-                    {busy === "linkedin" ? "Posting…" : "Post to LinkedIn"}
-                  </Button>
-                }
-              />
-              <Network
-                name="Facebook"
-                note="Posts as a Facebook Page you manage."
-                configured={status.facebook.configured}
-                connectedAs={status.facebook.connectedAs}
-                onConnect={() => connect("/api/social/facebook/connect")}
-                onDisconnect={() => disconnect("facebook")}
-                action={
-                  status.facebook.pages.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      No Pages found on this Facebook account.
-                    </Typography>
-                  ) : (
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: { sm: "center" } }}>
-                      <TextField select size="small" label="Post as" value={pageId} onChange={(e) => setPageId(e.target.value)} sx={{ minWidth: 220 }}>
-                        {status.facebook.pages.map((p) => (
-                          <MenuItem key={p.id} value={p.id}>
-                            {p.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <Button variant="contained" onClick={() => publish("facebook")} disabled={!ready || !pageId}>
-                        {busy === "facebook" ? "Posting…" : "Post to Facebook"}
+            </Box>
+          </Stack>
+
+          {/* Posting straight to LinkedIn or a Facebook Page only shows once it's set up. */}
+          {status && (status.linkedIn.configured || status.facebook.configured) && (
+            <Box sx={{ mt: 3, pt: 3, borderTop: 1, borderColor: "divider" }}>
+              <Typography sx={{ fontWeight: 700, mb: 2 }}>Or post straight from here{photo ? ", with the photo" : ""}</Typography>
+              <Stack spacing={2.5} divider={<Box sx={{ borderTop: 1, borderColor: "divider" }} />}>
+                {status.linkedIn.configured && (
+                  <Network
+                    name="LinkedIn"
+                    note="Posts on your own LinkedIn profile."
+                    configured
+                    connectedAs={status.linkedIn.connectedAs}
+                    onConnect={() => connect("/api/social/linkedin/connect")}
+                    onDisconnect={() => disconnect("linkedin")}
+                    action={
+                      <Button variant="contained" onClick={() => publish("linkedin")} disabled={!ready || tooLongForLinkedIn}>
+                        {busy === "linkedin" ? "Posting…" : "Post to LinkedIn"}
                       </Button>
-                    </Stack>
-                  )
-                }
-              />
-            </Stack>
+                    }
+                  />
+                )}
+                {status.facebook.configured && (
+                  <Network
+                    name="Facebook"
+                    note="Posts as a Facebook Page you manage."
+                    configured
+                    connectedAs={status.facebook.connectedAs}
+                    onConnect={() => connect("/api/social/facebook/connect")}
+                    onDisconnect={() => disconnect("facebook")}
+                    action={
+                      status.facebook.pages.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No Pages found on this Facebook account.
+                        </Typography>
+                      ) : (
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: { sm: "center" } }}>
+                          <TextField select size="small" label="Post as" value={pageId} onChange={(e) => setPageId(e.target.value)} sx={{ minWidth: 220 }}>
+                            {status.facebook.pages.map((p) => (
+                              <MenuItem key={p.id} value={p.id}>
+                                {p.name}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <Button variant="contained" onClick={() => publish("facebook")} disabled={!ready || !pageId}>
+                            {busy === "facebook" ? "Posting…" : "Post to Facebook"}
+                          </Button>
+                        </Stack>
+                      )
+                    }
+                  />
+                )}
+              </Stack>
+            </Box>
           )}
 
           {results.length > 0 && (
@@ -609,8 +626,7 @@ function Network({
 
 /** What's still needed, with the exact redirect URLs to paste into the LinkedIn and Facebook apps. */
 function Setup({ status }: { status: Status }) {
-  const allSet = status.claude && status.linkedIn.configured && status.facebook.configured;
-  const [open, setOpen] = useState(!allSet);
+  const [open, setOpen] = useState(false); // closed until wanted
   const row = (ok: boolean, label: string, detail: React.ReactNode) => (
     <Box component="li" sx={{ mb: 1.5 }}>
       <Typography sx={{ fontWeight: 600 }}>

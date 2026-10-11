@@ -1,5 +1,5 @@
 import { loadBoard } from "@safe-paws/db";
-import { draftPost, TONES, type Tone } from "@/lib/social/claude";
+import { draftPost, latestUpdates, TONES, type Tone } from "@/lib/social/claude";
 import { jsonError, photoFrom, requestOrigin, requireCoordinator, SocialError } from "@/lib/social/server";
 
 export const maxDuration = 60;
@@ -13,16 +13,25 @@ export async function POST(req: Request) {
     const toneRaw = String(form.get("tone") ?? "heartfelt");
     const tone: Tone = toneRaw in TONES ? (toneRaw as Tone) : "heartfelt";
     const animalId = String(form.get("animalId") ?? "");
-    if (topic.length < 8 && !animalId) throw new SocialError("Tell Claude a little more about what the post should cover, or pick an animal.");
+    if (topic.length < 8 && !animalId && tone !== "updates") {
+      throw new SocialError("Tell Claude a little more about what the post should cover, or pick an animal.");
+    }
 
-    const animal = animalId ? (await loadBoard()).board.animals[animalId] : undefined;
+    const { board } = await loadBoard();
+    const animal = animalId ? board.animals[animalId] : undefined;
     if (animalId && !animal) throw new SocialError("That animal isn't on the board any more.");
+    // Updates: an animal's own recent updates are in its details; with no animal, the rescue's latest.
+    const updates = tone === "updates" && !animal ? latestUpdates(Object.values(board.animals), requestOrigin(req)) : undefined;
+    if (tone === "updates" && (animal ? animal.notes.length === 0 : !updates)) {
+      throw new SocialError(animal ? `${animal.name} has no updates yet.` : "There are no updates yet.");
+    }
     const photo = await photoFrom(form);
 
     const post = await draftPost({
-      topic: topic || `A post about ${animal!.name}.`,
+      topic: topic || (animal ? `A post about ${animal.name}.` : ""),
       tone,
       animal,
+      updates,
       origin: requestOrigin(req),
       photo: photo?.bytes,
     });
