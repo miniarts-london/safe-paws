@@ -192,7 +192,10 @@ function AnimalProfile({ animal, onOffer, onUpdates }: { animal: Animal; onOffer
       <Box
         sx={{
           position: "relative",
-          ...(cover ? { aspectRatio: "16 / 10", maxHeight: 200 } : { height: 72 }),
+          // A fixed height, not aspect-ratio + max-height: Safari then shrinks the width to keep
+          // the ratio, which left a gap on the right of the photo on iPhones.
+          width: "100%",
+          height: cover ? 200 : 72,
           bgcolor: animal.species === "dog" ? "species.dog" : "species.cat",
         }}
       >

@@ -1,5 +1,6 @@
 "use client";
 
+import ArrowDownward from "@mui/icons-material/ArrowDownward";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import Check from "@mui/icons-material/Check";
@@ -258,6 +259,13 @@ export function SocialStudio() {
     loadStatus();
   };
 
+  /** No AI: go to step 2 and put the cursor in the post box. */
+  const skipToPost = () => {
+    const box = document.getElementById("social-text");
+    box?.closest("section")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    box?.focus({ preventScroll: true });
+  };
+
   const copy = async () => {
     await navigator.clipboard.writeText(post).catch(() => {});
     setCopied(true);
@@ -308,7 +316,7 @@ export function SocialStudio() {
         Social post
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
-        Draft a post with Claude, then share it to Instagram, Facebook and more. Only coordinators can see this page.
+        Draft a post with Claude (or write it yourself), then share it to Instagram, Facebook and more. Only coordinators can see this page.
       </Typography>
 
       {notice && (
@@ -320,9 +328,15 @@ export function SocialStudio() {
       <Stack spacing={2.5}>
         {/* 1. What's it about */}
         <Card component="section" aria-labelledby="social-about" sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography id="social-about" component="h2" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            1. What&apos;s the post about?
-          </Typography>
+          <Stack direction="row" useFlexGap sx={{ alignItems: "center", flexWrap: "wrap", columnGap: 2, rowGap: 0.5, mb: 2 }}>
+            <Typography id="social-about" component="h2" variant="h6" sx={{ fontWeight: 700, flex: 1, minWidth: "fit-content" }}>
+              1. What&apos;s the post about?
+            </Typography>
+            {/* For anyone who'd rather not use AI: straight to the post box. */}
+            <Button endIcon={<ArrowDownward />} onClick={skipToPost} disabled={busy === "draft"} sx={{ ml: -1 }}>
+              Skip, I&apos;ll write it myself
+            </Button>
+          </Stack>
           <Stack spacing={2.5}>
             <Autocomplete
               options={list}
@@ -397,7 +411,7 @@ export function SocialStudio() {
         </Card>
 
         {/* 2. The post */}
-        <Card component="section" aria-labelledby="social-post" sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card component="section" aria-labelledby="social-post" sx={{ p: { xs: 2, sm: 3 }, scrollMarginTop: 120 /* clear the sticky header */ }}>
           <Stack direction="row" sx={{ alignItems: "center", mb: 2 }}>
             <Typography id="social-post" component="h2" variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
               2. Your post
