@@ -39,7 +39,7 @@ import NextLink from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
-import { JoinDialog, JoinToSeeUpdates } from "./JoinDialog";
+import { JoinDialog } from "./JoinDialog";
 import { useSend } from "@/lib/useBoardSocket";
 
 type Species = "all" | "dog" | "cat";
@@ -256,12 +256,8 @@ function AnimalProfile({ animal, onOffer, onUpdates }: { animal: Animal; onOffer
             {animal.about}
           </Typography>
         )}
-        {!signedIn ? (
-          // Updates are for members.
-          <Box sx={{ position: "relative", zIndex: 1 }}>
-            <JoinToSeeUpdates animal={animal} compact />
-          </Box>
-        ) : latest ? (
+        {/* Updates are for members: visitors don't see them at all. */}
+        {!signedIn ? null : latest ? (
           <Button
             variant="text"
             size="small"
