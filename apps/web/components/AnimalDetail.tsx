@@ -13,6 +13,7 @@ import { useBoard, useMe } from "@safe-paws/shared/store";
 import { timeAgo, useNow } from "@safe-paws/shared/time";
 import NextLink from "next/link";
 import { AnimalActions, useOfferFlow } from "./AnimalDirectory";
+import { JoinToSeeUpdates } from "./JoinDialog";
 import { DetailAccordion, OffersAccordion } from "./OffersAccordion";
 
 /**
@@ -133,8 +134,17 @@ function Profile({ animal, onOffer }: { animal: Animal; onOffer: () => void }) {
       {/* Offers carry people's own messages; the server only sends everyone's to staff. */}
       {isStaff(me?.role) && animal.requests.length > 0 && <OffersAccordion animal={animal} defaultExpanded size="section" />}
 
-      <DetailAccordion id={`updates-${animal.id}`} title="Updates" count={animal.notes.length} defaultExpanded size="section">
-        {animal.notes.length === 0 ? (
+      <DetailAccordion
+        id={`updates-${animal.id}`}
+        title="Updates"
+        count={me ? animal.notes.length : undefined}
+        defaultExpanded
+        size="section"
+      >
+        {!me ? (
+          // Updates are for members; visitors are invited to join or sign in.
+          <JoinToSeeUpdates animal={animal} />
+        ) : animal.notes.length === 0 ? (
           <Typography color="text.secondary">No updates yet.</Typography>
         ) : (
           <Stack component="ol" spacing={2.5} sx={{ listStyle: "none", m: 0, p: 0 }}>

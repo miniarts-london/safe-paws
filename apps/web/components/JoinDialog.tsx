@@ -1,6 +1,8 @@
 "use client";
 
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -35,5 +37,37 @@ export function JoinDialog({ animal, onClose }: { animal: Animal | null; onClose
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+/** Where updates would be, for visitors: updates are for members, so invite them to join or sign in. */
+export function JoinToSeeUpdates({ animal, compact = false }: { animal: Animal; compact?: boolean }) {
+  const next = encodeURIComponent(`/animals/${animal.id}`);
+  const join = (
+    <Link component={NextLink} href={`/register?next=${next}`} sx={{ fontWeight: 600 }}>
+      Join for free
+    </Link>
+  );
+  const signIn = (
+    <Link component={NextLink} href={`/login?next=${next}`} sx={{ fontWeight: 600 }}>
+      sign in
+    </Link>
+  );
+  return (
+    <Typography variant={compact ? "body2" : "body1"} color="text.secondary" sx={{ lineHeight: 1.6 }}>
+      {compact ? (
+        <>
+          {join} or {signIn} to read {animal.name}&apos;s updates.
+        </>
+      ) : (
+        <>
+          Updates on how {animal.name} is doing are for members.{" "}
+          <Box component="span" sx={{ whiteSpace: "nowrap" }}>
+            {join}
+          </Box>{" "}
+          or {signIn} to read them.
+        </>
+      )}
+    </Typography>
   );
 }

@@ -120,7 +120,7 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 
 `/animals` (the **Animals** link in the header) lists every animal with its details for everyone signed in, members and staff alike. It's read-only: nothing here changes an animal's record. Search by name or area, and filter by stage or dogs and cats.
 
-**Visitors who aren't signed in** can see the Animals page and each animal's page too, read-only and without live updates (a snapshot when the page loads, from `apps/web/lib/publicBoard.ts`). They see the photos, updates and how many people follow and like each animal, but never who: followers and likes are counts, offers to help are left out, and the only names shown are staff on updates. There's no **Follow** button; **Adopt or sponsor** and **Like** open a popup asking them to create an account or sign in, which then brings them straight back to that animal (`?next=`, only ever a path on this site). Photos and videos on an animal's profile are served to visitors; files still sitting in someone's unsaved form stay private.
+**Visitors who aren't signed in** can see the Animals page and each animal's page too, read-only and without live updates (a snapshot when the page loads, from `apps/web/lib/publicBoard.ts`). They see the photos, the facts and how many people follow and like each animal, but never who: followers and likes are counts, and offers to help are left out. Updates are for members only: visitors see a prompt to join instead, and the updates are left out of what the page sends. There's no **Follow** button; **Adopt or sponsor** and **Like** open a popup asking them to create an account or sign in, which then brings them straight back to that animal (`?next=`, only ever a path on this site). Photos and videos on an animal's profile are served to visitors; files still sitting in someone's unsaved form stay private.
 
 - **Click any card** (or its name, with the keyboard) to open that animal's page at `/animals/<id>`: every photo and video, the facts, where it is on the way from street to home, followers and likes, and all updates. The same buttons are there too.
 - Each card shows its first photo (at most 200px tall) and how many updates there are; the updates open in a popup.
@@ -136,11 +136,32 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 - **Photos and videos upload as soon as they're picked**, with a progress bar each, so saving is instant. Save waits if anything is still uploading.
 - **Uploads are checked three times:** by type (allowlist; no SVG, since it can carry script), by size (15 MB photos, 100 MB videos), and by the file's first bytes, so a renamed web page can't pass as a photo. The same limits run in the browser first for a quick answer.
 - **Media is private:** `/api/media/<id>` serves files only to signed-in people (web cookie or the app's Bearer token), with `nosniff`, and supports byte ranges so videos can seek (Safari needs this to play at all). Where the files live depends on where the site runs, all handled in `apps/web/lib/media.ts`; their details (type, size, who uploaded them) are in Postgres either way.
-  - **On Vercel: a private Vercel Blob store.** Vercel's servers can't keep files, and only accept requests up to 4.5 MB, so the browser uploads each file straight to Blob with a short-lived token from `/api/media/upload` (staff only, one allowed type and size, a fresh `media/<uuid>` path). Then `/api/media/register` checks what actually arrived (type, size, first bytes) before recording it, and deletes anything that fails. Turned on by `BLOB_READ_WRITE_TOKEN`, which Vercel adds when you connect a Blob store to the project.
+  - **On Vercel: a private Vercel Blob store.** Vercel's servers can't keep files, and only accept requests up to 4.5 MB, so the browser uploads each file straight to Blob with a short-lived token from `/api/media/upload` (staff only, one allowed type and size, a fresh `media/<uuid>` path). Then `/api/media/register` checks what actually arrived (type, size, first bytes) before recording it, and deletes anything that fails. Turned on when you connect a Blob store to the project: newer stores sign in with Vercel's short-lived OIDC credentials (`BLOB_STORE_ID`), older ones with a fixed `BLOB_READ_WRITE_TOKEN`; both work. `GET /api/media/upload` (signed in as staff) reports which one the site found.
   - **Locally: `apps/web/.uploads/`**, through `/api/media`, so development needs no setup. The phone app uses this route too (up to 4.5 MB per file on Vercel).
 - **The server validates the details with the same zod schema** as the form, gives the new animal an id the browser chose (so it can open straight away), puts it at the top of *Reported*, and makes the person who registered it a follower.
 - **Notifications:** coordinators hear about every new animal and the vet is told it may need a check. New photos or videos notify followers ("Mona added 1 new photo of Luna, who you sponsor."); small corrections don't.
 - The mobile app shows the new details and the photos (sending its token to load them). Registering from the app is a good next step.
+
+### Social post (coordinators)
+
+`/social` (**Social post** in the menu, coordinators only; everyone else is sent back to the board and the API answers 403) writes a post with Claude and shares it to LinkedIn and a Facebook Page. It's the LinkedIn post studio, moved in.
+
+1. **What it's about:** pick an animal (optional: its facts, last few updates and page link go to Claude), say what the post is about, and choose a tone (heartfelt, a story, an appeal for help, good news). Add a photo: one of the animal's, or one from your device. Photos are turned into a JPEG of at most 2048px in the browser, so they fit Vercel's 4.5 MB request limit and every network accepts them.
+2. **Your post:** Claude's draft, which you can edit freely (LinkedIn allows 3,000 characters), or copy.
+3. **Share it:** connect LinkedIn and/or Facebook once, then post. Facebook posts go to a Page you manage.
+
+How it's kept safe:
+- The keys live only in environment variables on the server and are never sent to the browser.
+- Each coordinator signs in to LinkedIn or Facebook themselves. The sign-in is kept in an encrypted, httpOnly cookie that only `/api/social` can read, tied to that coordinator's account, so it's useless to anyone else. **Disconnect** deletes it.
+- The draft and photo are kept in the tab while you're away signing in, so nothing is lost.
+
+Setup (each part is optional; the page shows what's missing, with the exact redirect URLs to copy):
+- **Claude:** `ANTHROPIC_API_KEY` from console.anthropic.com. `ANTHROPIC_MODEL` is optional.
+- **LinkedIn:** create an app at linkedin.com/developers, add the products *Share on LinkedIn* and *Sign In with LinkedIn using OpenID Connect*, add the redirect URL `https://<your site>/api/social/linkedin/callback`, then set `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`.
+- **Facebook:** create an app at developers.facebook.com with *Facebook Login*, add the redirect URL `https://<your site>/api/social/facebook/callback`, ask for `pages_show_list`, `pages_manage_posts` and `pages_read_engagement`, then set `FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET`. Until the app is approved by Meta, only people with a role on the app can connect.
+- Add them in Vercel (Settings, Environment Variables) and redeploy. `SESSION_SECRET` must be set, since it also encrypts the sign-in cookies.
+
+The code is in `apps/web/lib/social/`, `apps/web/app/api/social/` and `apps/web/components/SocialStudio.tsx`.
 
 ### Data (Postgres)
 

@@ -39,7 +39,7 @@ import NextLink from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
-import { JoinDialog } from "./JoinDialog";
+import { JoinDialog, JoinToSeeUpdates } from "./JoinDialog";
 import { useSend } from "@/lib/useBoardSocket";
 
 type Species = "all" | "dog" | "cat";
@@ -168,6 +168,7 @@ export function AnimalDirectory() {
 const OFFERED: Record<RequestKind, string> = { adopt: "You offered to adopt", sponsor: "You offered to sponsor" };
 
 function AnimalProfile({ animal, onOffer, onUpdates }: { animal: Animal; onOffer: () => void; onUpdates: () => void }) {
+  const signedIn = !!useBoard((s) => s.me);
   const now = useNow();
   const pics = photos(animal);
   const cover = pics.at(-1);
@@ -255,7 +256,12 @@ function AnimalProfile({ animal, onOffer, onUpdates }: { animal: Animal; onOffer
             {animal.about}
           </Typography>
         )}
-        {latest ? (
+        {!signedIn ? (
+          // Updates are for members.
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <JoinToSeeUpdates animal={animal} compact />
+          </Box>
+        ) : latest ? (
           <Button
             variant="text"
             size="small"

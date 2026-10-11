@@ -31,6 +31,7 @@ import { MembersButton } from "./MembersDialog";
 import { OfferContactDialog } from "./OfferContactDialog";
 import { Board } from "./Board";
 import { DonateContent } from "./DonatePage";
+import { SocialStudio } from "./SocialStudio";
 import { MOBILE_NAV_HEIGHT, MobileBoard } from "./MobileBoard";
 import { ThemeToggle } from "./ThemeToggle";
 import { Toasts } from "./Toasts";
@@ -41,13 +42,15 @@ const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" 
   closed: { label: "Offline", color: "error" },
 };
 
-export type View = "board" | "animals" | "animal" | "donate";
+export type View = "board" | "animals" | "animal" | "donate" | "social";
 
 /** The menu. `short` is what phones show, in the menu's own row under the name. */
 const VIEWS: { id: View; label: string; short: string; href: string }[] = [
   { id: "animals", label: "Meet our animals", short: "Animals", href: "/animals" },
   { id: "board", label: "Rescue board", short: "Board", href: "/board" },
   { id: "donate", label: "Donate", short: "Donate", href: "/donate" },
+  // Coordinators only.
+  { id: "social", label: "Social post", short: "Social", href: "/social" },
 ];
 
 export default function BoardApp({
@@ -87,7 +90,7 @@ export default function BoardApp({
       spacing={0.5}
       sx={mobile ? { height: 44, px: 1, pb: 0.75, alignItems: "center", "& > a": { flex: 1 } } : undefined}
     >
-      {VIEWS.map((v) => (
+      {VIEWS.filter((v) => v.id !== "social" || me.role === "coordinator").map((v) => (
         <Button
           key={v.id}
           component={NextLink}
@@ -183,7 +186,9 @@ export default function BoardApp({
           // Doesn't need the board, so it shows straight away.
           <DonateContent />
         ) : board ? (
-          view === "animals" ? (
+          view === "social" ? (
+            <SocialStudio />
+          ) : view === "animals" ? (
             <AnimalDirectory />
           ) : view === "animal" && animalId ? (
             <AnimalDetail animalId={animalId} />
