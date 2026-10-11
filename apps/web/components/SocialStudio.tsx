@@ -4,6 +4,7 @@ import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopy from "@mui/icons-material/ContentCopy";
 import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
+import IosShare from "@mui/icons-material/IosShare";
 import OpenInNew from "@mui/icons-material/OpenInNew";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -86,7 +87,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 type Photo = { file: File; preview: string; from: string } | null;
-type Notice = { kind: "success" | "error"; text: string } | null;
+type Notice = { kind: "success" | "info" | "error"; text: string } | null;
 
 /** While connecting LinkedIn or Facebook the page goes away and comes back: keep the draft in this tab meanwhile. */
 const SAVED = "safe-paws-social-draft";
@@ -260,6 +261,39 @@ export function SocialStudio() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  /**
+   * Opens the phone's share menu with the photo, so it can go to Instagram, a personal
+   * Facebook profile, Stories, WhatsApp… The text is copied too: Instagram ignores text
+   * that comes with a photo, so it's pasted as the caption.
+   * Where there's no share menu (most desktop browsers), copies the text and saves the photo.
+   */
+  const share = async () => {
+    setNotice(null);
+    // Not awaited: Safari only opens the share menu straight from the tap.
+    const copied = navigator.clipboard?.writeText(post).then(() => true, () => false) ?? Promise.resolve(false);
+    const files = photo ? [photo.file] : [];
+    const data: ShareData = files.length ? { files, text: post } : { text: post };
+    if (navigator.share && (!navigator.canShare || navigator.canShare(data))) {
+      try {
+        await navigator.share(data);
+        if (await copied) setNotice({ kind: "info", text: "The post is copied too. On Instagram, paste it as the caption." });
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setNotice({ kind: "error", text: "Couldn't open the share menu. Copy the post and save the photo instead." });
+      }
+      return;
+    }
+    if (photo) {
+      const a = document.createElement("a");
+      a.href = photo.preview;
+      a.download = `${(animal?.name ?? "egypt-animal-sos").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`;
+      a.click();
+    }
+    setNotice({
+      kind: "info",
+      text: `${(await copied) ? "The post is copied" : "Copy the post above"}${photo ? " and the photo is saved" : ""}. Open Instagram or Facebook and paste it in. On a phone, this button opens the share menu instead.`,
+    });
+  };
+
   const animalPhotos = animal ? photos(animal) : [];
   const tooLongForLinkedIn = post.length > LINKEDIN_MAX;
   const ready = !!post.trim() && !busy;
@@ -270,7 +304,7 @@ export function SocialStudio() {
         Social post
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
-        Draft a post with Claude, then share it on LinkedIn or the rescue&apos;s Facebook Page. Only coordinators can see this page.
+        Draft a post with Claude, then share it to Instagram or Facebook from your phone, or post it straight to LinkedIn or the rescue&apos;s Facebook Page. Only coordinators can see this page.
       </Typography>
 
       {notice && (
@@ -439,6 +473,17 @@ export function SocialStudio() {
           <Typography id="social-share" component="h2" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
             3. Share it
           </Typography>
+          <Box sx={{ pb: 2.5, mb: 2.5, borderBottom: 1, borderColor: "divider" }}>
+            <Box sx={{ mb: 1.25 }}>
+              <Typography sx={{ fontWeight: 700 }}>Instagram, Facebook and more</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                Opens your phone&apos;s share menu with the photo{photo ? "" : " (add one above for Instagram)"}, and copies the post to paste as the caption.
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<IosShare />} onClick={share} disabled={!post.trim() || !!busy}>
+              Share
+            </Button>
+          </Box>
           {!status ? (
             <CircularProgress size={24} aria-label="Loading" />
           ) : (
