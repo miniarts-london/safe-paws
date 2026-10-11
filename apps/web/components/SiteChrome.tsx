@@ -12,7 +12,16 @@ import { SITE_CREDIT, SITE_NAME } from "@/lib/site";
  * `overlay`: float over the page (the home page's sky shows through, right to the top).
  * Otherwise it stays at the top as the page scrolls underneath.
  */
-export function SiteHeader({ signedIn, overlay = false }: { signedIn: boolean; overlay?: boolean }) {
+export function SiteHeader({
+  signedIn,
+  coordinator = false,
+  overlay = false,
+}: {
+  signedIn: boolean;
+  /** Coordinators also get a link to the Social post page. */
+  coordinator?: boolean;
+  overlay?: boolean;
+}) {
   // Everything in the bar takes the bar's text colour.
   const onPlum = { color: "inherit", borderColor: "currentColor" } as const;
   return (
@@ -56,9 +65,33 @@ export function SiteHeader({ signedIn, overlay = false }: { signedIn: boolean; o
         </Typography>
         <ThemeToggle color="inherit" />
         {signedIn ? (
-          <Button component={NextLink} href="/board" variant="outlined" sx={onPlum}>
-            Open the board
-          </Button>
+          <>
+            {coordinator && (
+              <Button component={NextLink} href="/social" color="inherit" sx={{ minWidth: 0, px: { xs: 1, sm: 1.5 }, whiteSpace: "nowrap" }}>
+                {/* Shorter on phones, so the site name still fits. */}
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  Social post
+                </Box>
+                <Box component="span" sx={{ display: { sm: "none" } }}>
+                  Social
+                </Box>
+              </Button>
+            )}
+            <Button component={NextLink} href="/board" variant="outlined" sx={{ ...onPlum, whiteSpace: "nowrap" }}>
+              {coordinator ? (
+                <>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    Open the board
+                  </Box>
+                  <Box component="span" sx={{ display: { sm: "none" } }}>
+                    Board
+                  </Box>
+                </>
+              ) : (
+                "Open the board"
+              )}
+            </Button>
+          </>
         ) : (
           <>
             <Button component={NextLink} href="/login" color="inherit" sx={{ minWidth: 0, px: { xs: 1, sm: 1.5 } }}>

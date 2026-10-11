@@ -10,13 +10,13 @@ import NextLink from "next/link";
 import { NatureBackdrop } from "./NatureBackdrop";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
-type Props = { signedIn: boolean };
+type Props = { signedIn: boolean; coordinator?: boolean };
 
-export function HomePage({ signedIn }: Props) {
+export function HomePage({ signedIn, coordinator = false }: Props) {
   return (
     <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default", position: "relative" }}>
       {/* Floats over the sky, which runs right up to the top of the page. */}
-      <SiteHeader signedIn={signedIn} overlay />
+      <SiteHeader signedIn={signedIn} coordinator={coordinator} overlay />
 
       <Box
         component="main"

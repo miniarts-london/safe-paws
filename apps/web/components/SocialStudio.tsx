@@ -337,15 +337,21 @@ export function SocialStudio() {
                 <TextField {...params} label="Animal (optional)" helperText="Claude uses their details and recent updates." />
               )}
             />
+            <Box>
+              {/* A label above the box rather than inside it: it's too long to fit in the border on a phone. */}
+              <Typography component="label" htmlFor="social-topic" variant="body2" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                What should it say? Give me some general idea and I&apos;ll write it for you :-)
+              </Typography>
             <TextField
               id="social-topic"
-              label="What should it say?"
+              fullWidth
               placeholder="e.g. Luna's mange is healing and she's ready for a foster home. We need help with her vet bills."
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               multiline
               minRows={3}
             />
+            </Box>
             <Box>
               <Typography component="p" variant="body2" color="text.secondary" sx={{ mb: 1 }} id="social-tone">
                 Tone
@@ -483,7 +489,7 @@ export function SocialStudio() {
               </Stack>
               {!photo && animal && animalPhotos.length > 0 && (
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                  Tap one of {animal.name}&apos;s photos to use it.
+                  Tap one of {animal.name}&apos;s photos or choose a new photo to use it.
                 </Typography>
               )}
             </Box>
