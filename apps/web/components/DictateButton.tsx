@@ -16,14 +16,14 @@ const MAX_SECONDS = 180;
 
 // Whether the server has speech to text set up, asked once per page load.
 let available: Promise<boolean> | null = null;
-const isAvailable = () =>
+export const speechAvailable = () =>
   (available ??= fetch("/api/transcribe")
     .then((r) => (r.ok ? r.json() : { available: false }))
     .then((j: { available?: boolean }) => !!j.available)
     .catch(() => false));
 
 /** The first recording format this browser can make: WebM/Opus (Chrome, Firefox, Android) or MP4 (Safari, iPhone). */
-function recordingType() {
+export function recordingType() {
   if (typeof MediaRecorder === "undefined") return null;
   return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
 }
@@ -46,7 +46,7 @@ export function DictateButton({ onText, disabled = false }: { onText: (text: str
 
   useEffect(() => {
     let live = true;
-    if (recordingType() !== null && typeof navigator.mediaDevices?.getUserMedia === "function") void isAvailable().then((ok) => live && setReady(ok));
+    if (recordingType() !== null && typeof navigator.mediaDevices?.getUserMedia === "function") void speechAvailable().then((ok) => live && setReady(ok));
     return () => {
       live = false;
       // Leaving mid-recording: let go of the microphone without sending anything.

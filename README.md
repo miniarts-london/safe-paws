@@ -141,6 +141,13 @@ Staff can say an update instead of typing it: **Speak it** under "Post an update
 - Turned on by `ELEVENLABS_API_KEY` (and optionally `ELEVENLABS_STT_MODEL`, default `scribe_v2`). Without a key, the button doesn't show.
 - The code is in `apps/web/components/DictateButton.tsx` and `apps/web/lib/transcribe.ts`.
 
+### Registering by voice
+
+At the top of **Register an animal** (new animals only), **Rather say it?** → **Speak it**: say the name, dog or cat, girl or boy, roughly how old, where they were found, whether they're neutered and anything else. ElevenLabs writes it down, then Claude sorts it into the form's fields (`apps/web/lib/animalFromSpeech.ts`, using a forced tool call so the answer is always the form's shape, then checked field by field). Only what was said is filled in; anything not mentioned stays blank, never guessed. The area is matched to the known areas' spelling. Other details go into Notes. "You said: …" shows the transcript, and everything stays editable before **Register**.
+
+- Needs `ELEVENLABS_API_KEY` (or the block doesn't show) and `ANTHROPIC_API_KEY`. Without the Anthropic key, what was said goes into Notes as it is.
+- `/api/animals/from-speech` is staff only, like registering.
+
 ### The animal panel
 
 On the board each card has two buttons, and each opens its own panel: **Details** (facts, photos, stage, followers and, for staff, offers to help) and **Updates** (the form to post one, and every update so far). Clicking the card itself opens Details, and each panel has a link to the other. A notification about a new update opens the Updates panel.

@@ -32,6 +32,8 @@ import { Controller, useForm, useWatch, type Control, type FieldPath } from "rea
 import { useAnimalForm } from "@/lib/formStore";
 import { useSend } from "@/lib/useBoardSocket";
 import { MediaPicker } from "./../../MediaPicker";
+import { SpeakToFill } from "./../../SpeakToFill";
+import type { SpokenDetails } from "@/lib/animalFromSpeech";
 
 /** Neighbourhoods offered as suggestions; anything else can still be typed. */
 const ALEXANDRIA_AREAS = [
@@ -154,7 +156,7 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const onBusyChange = useCallback((n: number) => setUploading(n), []);
 
-  const { control, handleSubmit, formState, setError } = useForm<AnimalDetailsForm>({
+  const { control, handleSubmit, formState, setError, setValue, getValues } = useForm<AnimalDetailsForm>({
     resolver: zodResolver(animalDetailsSchema),
     defaultValues: animal ? fromAnimal(animal) : EMPTY,
     // Quiet until the first Save/Register press, then errors update as you fix them.
@@ -205,6 +207,23 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
     setTimeout(unsub, 5000);
   };
 
+  /** Fields Claude took from what was said. Only those are set; the rest stay as they are. */
+  const fillFromSpeech = (d: SpokenDetails) => {
+    const opts = { shouldDirty: true, shouldValidate: formState.isSubmitted } as const;
+    if (d.name) setValue("name", d.name, opts);
+    if (d.species) setValue("species", d.species, opts);
+    if (d.sex) setValue("sex", d.sex, opts);
+    if (d.age) setValue("age", d.age, opts);
+    if (d.neutered) setValue("neutered", d.neutered, opts);
+    if (d.weightKg !== null) setValue("weightKg", d.weightKg, opts);
+    if (d.area) setValue("area", d.area, opts);
+    if (d.about) addNotes(d.about);
+  };
+  const addNotes = (text: string) => {
+    const typed = getValues("about").trim();
+    setValue("about", (typed ? `${typed}\n${text}` : text).slice(0, ABOUT_MAX), { shouldDirty: true, shouldValidate: formState.isSubmitted });
+  };
+
   const title = animal ? `Edit ${animal.name}'s details` : "Register an animal";
   const err = formState.errors;
 
@@ -213,6 +232,9 @@ function AnimalForm({ animal, onDirtyChange, onCancel, onDone }: FormProps) {
       <DialogTitle id="animal-form-title">{title}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={3}>
+          {/* New animals only: say the details and they're filled in (ElevenLabs, then Claude). */}
+          {!animal && <SpeakToFill areas={areas} onFill={fillFromSpeech} onNotes={addNotes} />}
+
           <Controller
             name="name"
             control={control}
