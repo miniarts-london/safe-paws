@@ -14,7 +14,7 @@ import Typography from "@mui/material/Typography";
 import { useState } from "react";
 import { BANK, PAYPAL_EMAIL, PAYPAL_ME_URL, PAYPAL_URL } from "@/lib/donation";
 import { visuallyHidden } from "@/lib/visuallyHidden";
-import { SiteFooter, SiteHeader } from "./SiteChrome";
+import { SiteFooter, SiteHeader } from "./../../SiteChrome";
 
 /** The public page, for visitors who aren't signed in. Signed-in people see the same content inside the app. */
 export function DonatePage() {

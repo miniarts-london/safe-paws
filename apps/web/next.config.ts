@@ -1,9 +1,7 @@
-import path from "node:path";
-import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 
-// One .env.local at the repo root, shared with the board server.
-loadEnvConfig(path.resolve(__dirname, "../.."));
+// Settings come from one .env.local at the repo root, shared with the board server:
+// `npm run dev` / `start` load it before Next starts (see scripts/next.mjs).
 
 const nextConfig: NextConfig = {
   // The shared package ships TypeScript source; let Next compile it.

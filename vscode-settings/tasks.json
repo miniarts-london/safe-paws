@@ -1,0 +1,144 @@
+// Terminal → Run Build Task (⇧⌘B) runs "Check for errors": every package's typecheck and the lint,
+// with everything they find listed in the Problems panel (⇧⌘M).
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Typecheck: web",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/web"
+      },
+      "problemMatcher": {
+        "base": "$tsc",
+        "owner": "tsc-web",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/apps/web"
+        ]
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Typecheck: mobile",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/mobile"
+      },
+      "problemMatcher": {
+        "base": "$tsc",
+        "owner": "tsc-mobile",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/apps/mobile"
+        ]
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Typecheck: shared",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/shared"
+      },
+      "problemMatcher": {
+        "base": "$tsc",
+        "owner": "tsc-shared",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/packages/shared"
+        ]
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Typecheck: db",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/db"
+      },
+      "problemMatcher": {
+        "base": "$tsc",
+        "owner": "tsc-db",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/packages/db"
+        ]
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Typecheck: server",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/server"
+      },
+      "problemMatcher": {
+        "base": "$tsc",
+        "owner": "tsc-server",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/server"
+        ]
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Lint: web",
+      "type": "shell",
+      "command": "npm run lint",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/web"
+      },
+      "problemMatcher": "$eslint-stylish",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "check"
+      }
+    },
+    {
+      "label": "Check for errors",
+      "detail": "Type errors and lint problems across the whole project, listed in the Problems panel",
+      "dependsOn": [
+        "Typecheck: web",
+        "Typecheck: mobile",
+        "Typecheck: shared",
+        "Typecheck: db",
+        "Typecheck: server",
+        "Lint: web"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

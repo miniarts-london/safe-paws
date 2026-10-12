@@ -2,42 +2,20 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { animalFacts, photos } from "@safe-paws/shared/format";
+import { animalFacts } from "@safe-paws/shared/format";
 import type { Animal, User } from "@safe-paws/shared/protocol";
 import { useBoard, useCanEdit } from "@safe-paws/shared/store";
 import { timeAgo } from "@safe-paws/shared/time";
 import { memo } from "react";
+import { AnimalAvatar } from "../../AnimalAvatar";
 
 type Props = { animal: Animal; users: User[]; me: string | null; now: number };
-
-export function AnimalAvatar({ animal, size = 40 }: { animal: Animal; size?: number }) {
-  const photo = photos(animal).at(-1);
-  return (
-    <Avatar
-      variant="rounded"
-      aria-hidden
-      src={photo?.url}
-      sx={{
-        width: size,
-        height: size,
-        fontSize: size * 0.42,
-        fontWeight: 700,
-        borderRadius: "12px", // a string, so MUI doesn't multiply it by the theme radius
-        color: animal.species === "dog" ? "species.onDog" : "species.onCat",
-        bgcolor: animal.species === "dog" ? "species.dog" : "species.cat",
-      }}
-    >
-      {animal.name[0]}
-    </Avatar>
-  );
-}
 
 /** What a card shows. Used by the sortable card and by the drag overlay. */
 export const CardBody = memo(function CardBody({ animal, users, me, now }: Props) {
@@ -56,21 +34,6 @@ export const CardBody = memo(function CardBody({ animal, users, me, now }: Props
             {animalFacts(animal)}
           </Typography>
         </Box>
-        <Button
-          size="small"
-          variant="outlined"
-          color="inherit"
-          aria-label={`Open ${animal.name}`}
-          sx={{ minWidth: 0, px: 1, color: "text.secondary", borderColor: "divider" }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            openAnimal(animal.id);
-          }}
-        >
-          Details
-        </Button>
       </Stack>
       {latest && (
         <Typography
@@ -89,9 +52,39 @@ export const CardBody = memo(function CardBody({ animal, users, me, now }: Props
         </Typography>
         {following && <Chip label="Following" size="small" color="mint" sx={{ ml: "auto !important", height: 22 }} />}
       </Stack>
+      {/* Two panels: the animal's details, or its updates (and the form to post one). */}
+      <Stack direction="row" spacing={1}>
+        <PanelButton label="Details" aria-label={`Open ${animal.name}`} onOpen={() => openAnimal(animal.id, "details")} />
+        <PanelButton
+          label={`Updates (${animal.notes.length})`}
+          aria-label={`${animal.name}'s updates`}
+          onOpen={() => openAnimal(animal.id, "updates")}
+        />
+      </Stack>
     </Stack>
   );
 });
+
+/** A small card button that opens a panel without starting a drag. */
+function PanelButton({ label, onOpen, ...rest }: { label: string; onOpen: () => void; "aria-label": string }) {
+  return (
+    <Button
+      size="small"
+      variant="outlined"
+      color="inherit"
+      aria-label={rest["aria-label"]}
+      sx={{ minWidth: 0, px: 1, flex: 1, color: "text.secondary", borderColor: "divider" }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+    >
+      {label}
+    </Button>
+  );
+}
 
 export function AnimalCard(props: Props) {
   const { animal } = props;

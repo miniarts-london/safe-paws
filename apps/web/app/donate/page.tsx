@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getUser } from "@safe-paws/db";
-import BoardApp from "@/components/BoardClient";
-import { DonatePage } from "@/components/DonatePage";
+import BoardApp from "@/components/screens/board/BoardClient";
+import { DonatePage } from "@/components/screens/donate/DonatePage";
 import { getSession } from "@/lib/auth/session";
 import { SITE_NAME } from "@/lib/site";
 

@@ -21,7 +21,7 @@ import { useBoard } from "@safe-paws/shared/store";
 import { timeAgo, useNow } from "@safe-paws/shared/time";
 import NextLink from "next/link";
 import { useState } from "react";
-import { AnimalAvatar } from "./AnimalCard";
+import { AnimalAvatar } from "./AnimalAvatar";
 
 /**
  * What a coordinator sees after clicking an "would like to adopt / sponsor"

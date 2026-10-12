@@ -1,0 +1,4 @@
+{
+  // VS Code suggests installing these when the folder is opened.
+  "recommendations": ["dbaeumer.vscode-eslint"]
+}

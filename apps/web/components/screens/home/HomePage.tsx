@@ -8,7 +8,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
 import { NatureBackdrop } from "./NatureBackdrop";
-import { SiteFooter, SiteHeader } from "./SiteChrome";
+import { SiteFooter, SiteHeader } from "./../../SiteChrome";
 
 type Props = { signedIn: boolean; coordinator?: boolean };
 

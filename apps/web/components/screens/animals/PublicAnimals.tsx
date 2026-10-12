@@ -5,9 +5,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { useBoard } from "@safe-paws/shared/store";
 import { useEffect } from "react";
 import type { PublicSnapshot } from "@/lib/publicBoard";
-import { AnimalDetail } from "./AnimalDetail";
-import { AnimalDirectory } from "./AnimalDirectory";
-import { SiteFooter, SiteHeader } from "./SiteChrome";
+import { AnimalDetail } from "../board/AnimalDetail";
+import { AnimalDirectory } from "../board/AnimalDirectory";
+import { SiteFooter, SiteHeader } from "./../../SiteChrome";
 
 /**
  * The Animals pages for visitors who aren't signed in: the same list and

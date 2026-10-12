@@ -26,8 +26,8 @@ import { timeAgo, useNow } from "@safe-paws/shared/time";
 import { useState, type ReactNode } from "react";
 import { useAnimalForm } from "@/lib/formStore";
 import { useSend } from "@/lib/useBoardSocket";
-import { AnimalAvatar } from "./AnimalCard";
-import { NotificationList, useMarkRead } from "./NotificationList";
+import { AnimalAvatar } from "./../../AnimalAvatar";
+import { NotificationList, useMarkRead } from "./../../NotificationList";
 
 type Tab = "board" | "following" | "alerts";
 
@@ -175,8 +175,18 @@ function MobileCard({ animal, showStage = false }: { animal: Animal; showStage?:
           </Typography>
         </Stack>
       </CardActionArea>
-      {next && !showStage && (
-        <Box sx={{ px: 1.5, pb: 1.5 }}>
+      {/* The card opens its details; Updates opens the other panel: updates, and the form to post one. */}
+      <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.5 }}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          aria-label={`${animal.name}'s updates`}
+          sx={{ minHeight: 44, flex: next && !showStage ? "none" : 1, color: "text.secondary", borderColor: "divider" }}
+          onClick={() => useBoard.getState().openAnimal(animal.id, "updates")}
+        >
+          Updates ({animal.notes.length})
+        </Button>
+        {next && !showStage && (
           <Button
             fullWidth
             variant="outlined"
@@ -185,8 +195,8 @@ function MobileCard({ animal, showStage = false }: { animal: Animal; showStage?:
           >
             {NEXT_ACTION[next]} →
           </Button>
-        </Box>
-      )}
+        )}
+      </Stack>
     </Card>
   );
 }

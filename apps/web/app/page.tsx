@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getUser } from "@safe-paws/db";
 import { SITE_NAME } from "@/lib/site";
-import { HomePage } from "@/components/HomePage";
+import { HomePage } from "@/components/screens/home/HomePage";
 import { getSession } from "@/lib/auth/session";
 
 export const metadata: Metadata = {

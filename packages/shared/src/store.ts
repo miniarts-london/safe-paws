@@ -15,6 +15,8 @@ type BoardStore = {
   toasts: Toast[];
   /** Animal shown in the side panel. */
   openAnimalId: string | null;
+  /** What the side panel shows: the animal's details, or its updates (and the form to post one). */
+  openAnimalView: AnimalView;
   /** Coordinators: the offer shown after clicking its notification (who, how to reach them, which animal). */
   openOffer: { animalId: string; userId: string } | null;
   error: string | null;
@@ -28,10 +30,12 @@ type BoardStore = {
   receive: (n: Notification) => void;
   markRead: (ids: number[] | "all") => void;
   dismissToast: (key: number) => void;
-  openAnimal: (id: string | null) => void;
+  openAnimal: (id: string | null, view?: AnimalView) => void;
   showOffer: (offer: { animalId: string; userId: string } | null) => void;
   setError: (message: string | null) => void;
 };
+
+export type AnimalView = "details" | "updates";
 
 let toastSeq = 0;
 
@@ -43,6 +47,7 @@ export const useBoard = create<BoardStore>((set, get) => ({
   members: [],
   toasts: [],
   openAnimalId: null,
+  openAnimalView: "details",
   openOffer: null,
   error: null,
 
@@ -92,7 +97,7 @@ export const useBoard = create<BoardStore>((set, get) => ({
     }),
 
   dismissToast: (key) => set({ toasts: get().toasts.filter((t) => t.key !== key) }),
-  openAnimal: (id) => set({ openAnimalId: id }),
+  openAnimal: (id, view = "details") => set({ openAnimalId: id, openAnimalView: view }),
   showOffer: (openOffer) => set({ openOffer }),
   setError: (error) => set({ error }),
 }));
@@ -105,7 +110,7 @@ export const useMe = () => useBoard((s) => s.users.find((u) => u.id === s.me));
 export function openNotification(n: Notification) {
   const s = useBoard.getState();
   if (n.kind === "request") s.showOffer({ animalId: n.animalId, userId: n.actorId });
-  else s.openAnimal(n.animalId);
+  else s.openAnimal(n.animalId, n.kind === "note" ? "updates" : "details");
 }
 
 export const useIsCoordinator = () => useBoard((s) => s.users.find((u) => u.id === s.me)?.role === "coordinator");

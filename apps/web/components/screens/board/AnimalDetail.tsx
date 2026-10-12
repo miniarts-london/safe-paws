@@ -13,8 +13,8 @@ import { useBoard, useMe } from "@safe-paws/shared/store";
 import { timeAgo, useNow } from "@safe-paws/shared/time";
 import NextLink from "next/link";
 import { AnimalActions, useOfferFlow } from "./AnimalDirectory";
-import { JoinToSeeUpdates } from "./JoinDialog";
-import { DetailAccordion, OffersAccordion } from "./OffersAccordion";
+import { JoinToSeeUpdates } from "./../../JoinDialog";
+import { DetailAccordion, OffersAccordion } from "./../../OffersAccordion";
 
 /**
  * One animal's page: everything about it, read-only, for everyone signed in.

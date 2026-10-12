@@ -26,15 +26,15 @@ import { AnimalDetail } from "./AnimalDetail";
 import { AnimalDirectory } from "./AnimalDirectory";
 import { AnimalDrawer } from "./AnimalDrawer";
 import { AnimalFormDialog } from "./AnimalForm";
-import { Bell } from "./Bell";
-import { MembersButton } from "./MembersDialog";
-import { OfferContactDialog } from "./OfferContactDialog";
+import { Bell } from "./../../Bell";
+import { MembersButton } from "./../../MembersDialog";
+import { OfferContactDialog } from "./../../OfferContactDialog";
 import { Board } from "./Board";
-import { DonateContent } from "./DonatePage";
-import { SocialStudio } from "./SocialStudio";
+import { DonateContent } from "./../donate/DonatePage";
+import { SocialStudio } from "../social/SocialStudio";
 import { MOBILE_NAV_HEIGHT, MobileBoard } from "./MobileBoard";
-import { ThemeToggle } from "./ThemeToggle";
-import { Toasts } from "./Toasts";
+import { ThemeToggle } from "./../../ThemeToggle";
+import { Toasts } from "./../../Toasts";
 
 const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" | "error" }> = {
   open: { label: "Live", color: "mint" },

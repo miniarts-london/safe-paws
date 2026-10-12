@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getUser } from "@safe-paws/db";
 import { redirect } from "next/navigation";
-import BoardApp from "@/components/BoardClient";
+import BoardApp from "@/components/screens/board/BoardClient";
 import { getSession } from "@/lib/auth/session";
 import { SITE_NAME } from "@/lib/site";
 

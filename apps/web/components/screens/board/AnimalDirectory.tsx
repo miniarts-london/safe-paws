@@ -39,7 +39,7 @@ import NextLink from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
-import { JoinDialog } from "./JoinDialog";
+import { JoinDialog } from "./../../JoinDialog";
 import { useSend } from "@/lib/useBoardSocket";
 
 type Species = "all" | "dog" | "cat";

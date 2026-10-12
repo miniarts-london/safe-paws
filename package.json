@@ -22,7 +22,8 @@
     "db:reset": "npm run reset -w @safe-paws/db",
     "smoke": "npm run smoke -w @safe-paws/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "check": "npm run typecheck && npm run lint"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

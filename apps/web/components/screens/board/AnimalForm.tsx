@@ -31,7 +31,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Controller, useForm, useWatch, type Control, type FieldPath } from "react-hook-form";
 import { useAnimalForm } from "@/lib/formStore";
 import { useSend } from "@/lib/useBoardSocket";
-import { MediaPicker } from "./MediaPicker";
+import { MediaPicker } from "./../../MediaPicker";
 
 /** Neighbourhoods offered as suggestions; anything else can still be typed. */
 const ALEXANDRIA_AREAS = [

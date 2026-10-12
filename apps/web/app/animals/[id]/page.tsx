@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getAnimalName, getUser } from "@safe-paws/db";
-import BoardApp from "@/components/BoardClient";
-import { PublicAnimals } from "@/components/PublicAnimals";
+import BoardApp from "@/components/screens/board/BoardClient";
+import { PublicAnimals } from "@/components/screens/animals/PublicAnimals";
 import { getSession } from "@/lib/auth/session";
 import { publicBoard } from "@/lib/publicBoard";
 import { SITE_NAME } from "@/lib/site";

@@ -33,6 +33,9 @@ npm run dev:mobile   # the Expo app (in a second terminal)
 | `npm run db:reset` | Delete everything and start again with the sample data (refused in production) |
 | `npm run smoke` | In its own `safepaws_smoke` database: checks every kind of handshake (cookie, app token, forged, foreign site), then registers, moves, notes and edits as four people and prints what each received |
 | `npm run typecheck` / `lint` | Across every workspace |
+| `npm run check` | Both: every type error and lint problem in the project |
+
+**In VS Code**, open the repo root (`code .`) and install the ESLint extension when it's suggested. Type errors and lint problems then show as you edit, for every file, not just open ones, in the Problems panel (⇧⌘M) and as red underlines. **Terminal → Run Build Task** (⇧⌘B) runs the full check across every package and lists the results there too. The settings are in `.vscode/`.
 
 Copy `.env.example` to `.env.local` at the root to set `DATABASE_URL`, and set `SESSION_SECRET` before deploying. In development a fixed fallback secret is used, so it works out of the box.
 
@@ -128,6 +131,19 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 - **Like** (the heart) is a simple count, updated live for everyone.
 - **Adopt or sponsor:** adopting is offered once an animal is *Ready for adoption*; sponsoring until it has a home. The person can add a message (up to 500 characters). Every coordinator is notified ("Aya would like to adopt Zeina: …"), the person starts following the animal, and the offer shows for staff under **Offers to help**, a section that starts closed (on the animal's page and in its panel on the board). Each person can offer once of each kind per animal.
 - Members only see their own offers; offers are stored in `animal_requests` and likes in `animal_likes` (`packages/db/migrations/003_likes_and_requests.sql`).
+
+### Speaking an update
+
+Staff can say an update instead of typing it: **Speak it** under "Post an update" (open an animal's **Updates** on the board) records from the microphone, then [ElevenLabs Scribe](https://elevenlabs.io/docs/api-reference/speech-to-text/convert) turns it into text and adds it to the box, after anything already typed, to check and edit before posting. English, Arabic or a mix are detected automatically, and filler words ("um", "er") are left out.
+
+- Up to 3 minutes per recording. The browser records WebM (Chrome, Android) or MP4 (Safari, iPhone) and sends it to `/api/transcribe` (staff only), which passes it to ElevenLabs. The key stays on the server.
+- The recording isn't stored here; ElevenLabs processes it under its own terms.
+- Turned on by `ELEVENLABS_API_KEY` (and optionally `ELEVENLABS_STT_MODEL`, default `scribe_v2`). Without a key, the button doesn't show.
+- The code is in `apps/web/components/DictateButton.tsx` and `apps/web/lib/transcribe.ts`.
+
+### The animal panel
+
+On the board each card has two buttons, and each opens its own panel: **Details** (facts, photos, stage, followers and, for staff, offers to help) and **Updates** (the form to post one, and every update so far). Clicking the card itself opens Details, and each panel has a link to the other. A notification about a new update opens the Updates panel.
 
 ### Registering an animal
 

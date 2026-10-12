@@ -1,0 +1,15 @@
+{
+  // Use the project's own TypeScript (the version the build uses), not the one bundled with VS Code.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Show type errors for every file in the Problems panel, not just the files that are open.
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+
+  // ESLint runs from the web app, where its config lives.
+  "eslint.workingDirectories": [{ "directory": "apps/web", "changeProcessCWD": true }],
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+
+  // Error and warning counts in the status bar.
+  "problems.showCurrentInStatus": true
+}
