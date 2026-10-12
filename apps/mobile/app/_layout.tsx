@@ -15,8 +15,10 @@ function useOpenFromNotification(enabled: boolean) {
   useEffect(() => {
     if (!enabled || Platform.OS === "web") return;
     const open = (r: Notifications.NotificationResponse | null) => {
-      const id = r?.notification.request.content.data?.animalId;
-      if (typeof id === "string") router.push({ pathname: "/animal/[id]", params: { id } });
+      const data = r?.notification.request.content.data;
+      const id = data?.animalId;
+      // A new update opens the animal's Updates; anything else its Details.
+      if (typeof id === "string") router.push({ pathname: "/animal/[id]", params: { id, view: data?.kind === "note" ? "updates" : "details" } });
     };
     open(Notifications.getLastNotificationResponse());
     const sub = Notifications.addNotificationResponseReceivedListener(open);

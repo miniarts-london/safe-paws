@@ -19,7 +19,7 @@ export default function FollowingScreen() {
       contentContainerStyle={styles.list}
       ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
       ListEmptyComponent={
-        <Empty>You&apos;re not following any animals yet. Open one on the Board and tap Follow updates.</Empty>
+        <Empty>You&apos;re not following any animals yet. Tap Follow on any animal in Animals.</Empty>
       }
     />
   );

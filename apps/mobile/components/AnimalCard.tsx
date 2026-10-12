@@ -28,7 +28,7 @@ export const AnimalCard = memo(function AnimalCard({ animal, showStage = false }
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open ${animal.name}`}
-        onPress={() => router.push({ pathname: "/animal/[id]", params: { id: animal.id } })}
+        onPress={() => router.push({ pathname: "/animal/[id]", params: { id: animal.id, view: "details" } })}
         style={({ pressed }) => [styles.main, { opacity: pressed ? 0.7 : 1 }]}
       >
         <View style={styles.top}>
@@ -50,12 +50,23 @@ export const AnimalCard = memo(function AnimalCard({ animal, showStage = false }
           <Text style={{ color: t.ink, fontWeight: "600" }}>{animal.area}</Text> · {timeAgo(animal.updatedAt, now)} · {by}
         </Text>
       </Pressable>
-      {next && !showStage && (
+      {/* The card opens its details; Updates opens the animal's updates and the box to post one. */}
+      <View style={styles.actions}>
         <Button
-          label={`${NEXT_ACTION[next]} →`}
-          onPress={() => send({ type: "animal.move", animalId: animal.id, toStage: next, toIndex: 0 })}
+          label={`Updates (${animal.notes.length})`}
+          variant="quiet"
+          accessibilityLabel={`${animal.name}'s updates`}
+          onPress={() => router.push({ pathname: "/animal/[id]", params: { id: animal.id, view: "updates" } })}
+          style={{ borderColor: t.rule }}
         />
-      )}
+        {next && !showStage && (
+          <Button
+            label={`${NEXT_ACTION[next]} →`}
+            onPress={() => send({ type: "animal.move", animalId: animal.id, toStage: next, toIndex: 0 })}
+            style={{ flex: 1 }}
+          />
+        )}
+      </View>
     </View>
   );
 });
@@ -69,4 +80,5 @@ const styles = StyleSheet.create({
   facts: { fontSize: 13 },
   note: { fontSize: 14.5, lineHeight: 21 },
   foot: { fontSize: 12.5 },
+  actions: { flexDirection: "row", gap: 8 },
 });

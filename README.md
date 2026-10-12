@@ -87,6 +87,8 @@ WebSocket + bearer token ──────────────────�
 
 ### The mobile app
 
+**Tabs:** **Animals** (where everyone lands after signing in, like the website: every animal with its photo and story, search by name or area, filter dogs or cats and by stage, and follow, like, or offer to adopt or sponsor), **Board** (one stage at a time, for moving animals along), **Following** and **Alerts**. Tapping an animal opens its screen, with the same follow, like and adopt/sponsor buttons, its stage, and its updates.
+
 - **Signing in** goes to `POST /api/auth/token`, which runs the same password check as the web login but returns the signed session in the body instead of a cookie. The app keeps it in the phone's secure storage (Keychain on iOS, Keystore on Android) via `expo-secure-store`.
 - **Connecting** sends the token as a WebSocket subprotocol (`bearer.<token>`). The server verifies it before accepting, exactly as it verifies the web cookie. Cookies suit browsers and bearer tokens suit apps; there's no Origin check for tokens, because a web page can't attach one to a socket (that's the cross-site risk the cookie path guards against).
 - **Push notifications:** after connecting, the app registers its Expo push token. When the server creates a notification for someone whose app has no open connection, it sends it through Expo's push service; tapping it opens that animal. A notification arriving while the app is open shows as an in-app banner instead.

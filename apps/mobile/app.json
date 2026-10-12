@@ -20,7 +20,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Egypt Animal SOS to use the microphone so you can speak updates instead of typing them."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

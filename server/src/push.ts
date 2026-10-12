@@ -28,7 +28,7 @@ export async function sendPush(n: Notification) {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(
-        to.map((token) => ({ to: token, title: "Egypt Animal SOS", body: n.text, sound: "default", data: { animalId: n.animalId } })),
+        to.map((token) => ({ to: token, title: "Egypt Animal SOS", body: n.text, sound: "default", data: { animalId: n.animalId, kind: n.kind } })),
       ),
     });
     const json = (await res.json()) as { data?: Ticket[] };

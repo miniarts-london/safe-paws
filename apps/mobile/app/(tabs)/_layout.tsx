@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useBoard } from "@safe-paws/shared/store";
-import { router, Tabs } from "expo-router";
-import { useEffect, useRef } from "react";
+import { Tabs } from "expo-router";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useConnection } from "@/lib/connection";
 import { useTheme } from "@/lib/theme";
@@ -24,21 +23,9 @@ function HeaderRight() {
   );
 }
 
-/** Sponsors care about their own animals more than the pipeline, so they start on Following. */
-function useSponsorsStartOnFollowing() {
-  const role = useBoard((s) => s.users.find((u) => u.id === s.me)?.role);
-  const done = useRef(false);
-  useEffect(() => {
-    if (!role || done.current) return;
-    done.current = true;
-    if (role === "sponsor") router.navigate("/following");
-  }, [role]);
-}
-
 export default function TabsLayout() {
   const t = useTheme();
   const unread = useBoard((s) => s.notifications.filter((n) => !n.read).length);
-  useSponsorsStartOnFollowing();
   return (
     <Tabs
       screenOptions={{
@@ -52,8 +39,13 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: t.ground },
       }}
     >
+      {/* Animals first: everyone lands here after signing in, like on the website. */}
       <Tabs.Screen
         name="index"
+        options={{ title: "Animals", tabBarIcon: ({ color, size }) => <Ionicons name="paw-outline" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="board"
         options={{ title: "Board", tabBarIcon: ({ color, size }) => <Ionicons name="albums-outline" color={color} size={size} /> }}
       />
       <Tabs.Screen

@@ -21,7 +21,8 @@ export default function AlertsScreen() {
 
   const open = (n: Notification) => {
     if (!n.read) markRead([n.id]);
-    router.push({ pathname: "/animal/[id]", params: { id: n.animalId } });
+    // A new update opens the animal's Updates; anything else its Details.
+    router.push({ pathname: "/animal/[id]", params: { id: n.animalId, view: n.kind === "note" ? "updates" : "details" } });
   };
 
   return (
