@@ -20,34 +20,12 @@ Rules:
 - weightKg: kilograms. Convert pounds or grams. Null if not said.
 - area: where they were found, as a short place name. If it matches one of the known areas (even misheard or misspelled), use that exact spelling.
 - name: the name they gave. Null if none.
-- about: the other useful details they mentioned (health, behaviour, who reported them, what's needed), as one or two short plain sentences, without repeating the fields above. Null if nothing else.`;
+- about: the other useful details they mentioned (health, behaviour, who reported them, what's needed), as one or two short plain sentences, without repeating the fields above. Null if nothing else.
 
-const TOOL = {
-  name: "fill_form",
-  description: "The form fields taken from the transcript. Use null for anything not said.",
-  input_schema: {
-    type: "object",
-    properties: {
-      name: { type: ["string", "null"] },
-      species: { type: ["string", "null"], enum: ["dog", "cat", null] },
-      sex: { type: ["string", "null"], enum: ["female", "male", null] },
-      age: {
-        type: ["object", "null"],
-        properties: {
-          value: { type: "number" },
-          unit: { type: "string", enum: ["weeks", "months", "years"] },
-          estimated: { type: "boolean" },
-        },
-        required: ["value", "unit", "estimated"],
-      },
-      neutered: { type: ["string", "null"], enum: ["yes", "no", "unknown", null] },
-      weightKg: { type: ["number", "null"] },
-      area: { type: ["string", "null"] },
-      about: { type: ["string", "null"] },
-    },
-    required: ["name", "species", "sex", "age", "neutered", "weightKg", "area", "about"],
-  },
-} as const;
+Reply with only a JSON object, no other text, with exactly these keys:
+{"name": string|null, "species": "dog"|"cat"|null, "sex": "female"|"male"|null,
+ "age": {"value": number, "unit": "weeks"|"months"|"years", "estimated": boolean}|null,
+ "neutered": "yes"|"no"|"unknown"|null, "weightKg": number|null, "area": string|null, "about": string|null}`;
 
 // What comes back is checked field by field: anything malformed is dropped, not trusted.
 const field = <T extends z.ZodType>(t: T) => t.nullable().catch(null);
@@ -69,6 +47,18 @@ const filled = z.object({
 });
 export type SpokenDetails = z.infer<typeof filled>;
 
+/** The JSON object in the reply, even if it came wrapped in a code fence or a sentence. */
+function firstJsonObject(text: string): unknown {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return {};
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return {};
+  }
+}
+
 export const fillConfigured = () => !!socialConfig().anthropic.apiKey;
 
 export async function detailsFromSpeech(transcript: string, areas: string[]): Promise<SpokenDetails> {
@@ -78,13 +68,12 @@ export async function detailsFromSpeech(transcript: string, areas: string[]): Pr
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    // Plain JSON in the reply rather than a forced tool call: some models (those that think
+    // first) refuse tool_choice "tool". The answer is checked field by field below either way.
     body: JSON.stringify({
       model,
-      max_tokens: 800,
-      temperature: 0,
+      max_tokens: 1500,
       system: SYSTEM,
-      tools: [TOOL],
-      tool_choice: { type: "tool", name: TOOL.name },
       messages: [
         {
           role: "user",
@@ -93,10 +82,10 @@ export async function detailsFromSpeech(transcript: string, areas: string[]): Pr
       ],
     }),
   });
-  const json = (await res.json().catch(() => ({}))) as { content?: { type: string; input?: unknown }[]; error?: { message?: string } };
+  const json = (await res.json().catch(() => ({}))) as { content?: { type: string; text?: string }[]; error?: { message?: string } };
   if (!res.ok) throw new TranscribeError(`Couldn't fill in the form: ${json.error?.message ?? res.statusText}`, 502);
-  const input = json.content?.find((b) => b.type === "tool_use")?.input;
-  const parsed = filled.safeParse(input ?? {});
+  const text = (json.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
+  const parsed = filled.safeParse(firstJsonObject(text));
   if (!parsed.success) throw new TranscribeError("Couldn't make sense of that. Try again, or fill in the form.", 502);
   return parsed.data;
 }
