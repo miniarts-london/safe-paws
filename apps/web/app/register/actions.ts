@@ -34,5 +34,5 @@ export async function register(input: RegisterInput, next?: string): Promise<Reg
 
   await createSession(user.id);
   const back = safeNext(next);
-  redirect(back ? `${back}${back.includes("?") ? "&" : "?"}welcome=1` : "/board?welcome=1");
+  redirect(back ? `${back}${back.includes("?") ? "&" : "?"}welcome=1` : "/animals?welcome=1");
 }

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: `Create an account · ${SITE_NAME}` }
 /** `?next=` (e.g. from "Help Luna") brings people back to where they were afterwards. */
 export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
   const next = safeNext((await searchParams).next) ?? undefined;
-  if (await getSession()) redirect(next ?? "/board");
+  if (await getSession()) redirect(next ?? "/animals");
 
   return (
     <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", px: 2, py: 4, bgcolor: "background.default" }}>

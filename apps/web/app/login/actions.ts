@@ -22,7 +22,7 @@ export async function login(input: LoginInput, next?: string): Promise<LoginResu
   if (!userId) return { error: "That email and password don't match. Check them and try again." };
 
   await createSession(userId);
-  redirect(safeNext(next) ?? "/board");
+  redirect(safeNext(next) ?? "/animals"); // the Animals page is home once signed in
 }
 
 export async function logout() {

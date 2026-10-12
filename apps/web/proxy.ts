@@ -11,7 +11,7 @@ export function proxy(req: NextRequest) {
 
   // The Animals pages are public (read-only for visitors); the board needs an account.
   if (path.startsWith("/board") && !signedIn) return NextResponse.redirect(new URL("/login", req.nextUrl));
-  if ((path === "/login" || path === "/register") && signedIn) return NextResponse.redirect(new URL("/board", req.nextUrl));
+  if ((path === "/login" || path === "/register") && signedIn) return NextResponse.redirect(new URL("/animals", req.nextUrl));
   return NextResponse.next();
 }
 
