@@ -50,7 +50,10 @@ export async function transcribe(audio: File): Promise<string> {
   const json = (await res.json().catch(() => ({}))) as { text?: string; detail?: { message?: string } | string };
   if (!res.ok) {
     const detail = typeof json.detail === "string" ? json.detail : json.detail?.message;
-    if (res.status === 401) throw new TranscribeError("The ElevenLabs key was refused. Check ELEVENLABS_API_KEY.", 502);
+    // ElevenLabs says why (e.g. a deleted key, or one without the Speech to Text permission): pass that on.
+    if (res.status === 401 || res.status === 403) {
+      throw new TranscribeError(`ElevenLabs refused the key${detail ? `: ${detail}` : "."} Check ELEVENLABS_API_KEY, then restart the site.`, 502);
+    }
     if (res.status === 429) throw new TranscribeError("ElevenLabs is busy or the plan's limit is reached. Try again later, or type the update.", 502);
     throw new TranscribeError(`Couldn't turn that into text${detail ? `: ${detail}` : "."}`, 502);
   }

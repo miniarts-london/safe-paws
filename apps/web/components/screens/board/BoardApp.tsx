@@ -81,6 +81,13 @@ export default function BoardApp({
   useEffect(() => {
     if (welcome) window.history.replaceState(null, "", window.location.pathname);
   }, [welcome]);
+  // From the home page's "Register a new animal" shortcut (?register=1): open the form straight away.
+  const [register] = useState(() => new URLSearchParams(window.location.search).has("register"));
+  useEffect(() => {
+    if (!register) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    if (canEdit) useAnimalForm.getState().openCreate();
+  }, [register, canEdit]);
 
   const nav = (
     <Stack

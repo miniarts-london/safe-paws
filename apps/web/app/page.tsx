@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getUser } from "@safe-paws/db";
+import { isStaff } from "@safe-paws/shared/protocol";
 import { SITE_NAME } from "@/lib/site";
 import { HomePage } from "@/components/screens/home/HomePage";
 import { getSession } from "@/lib/auth/session";
@@ -14,5 +15,5 @@ export const metadata: Metadata = {
 export default async function Home() {
   const session = await getSession();
   const user = session ? await getUser(session.uid) : null;
-  return <HomePage signedIn={!!user} coordinator={user?.role === "coordinator"} />;
+  return <HomePage signedIn={!!user} staff={isStaff(user?.role)} coordinator={user?.role === "coordinator"} />;
 }

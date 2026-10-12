@@ -15,9 +15,12 @@ import { SITE_CREDIT, SITE_NAME } from "@/lib/site";
 export function SiteHeader({
   signedIn,
   coordinator = false,
+  staffShortcuts = false,
   overlay = false,
 }: {
   signedIn: boolean;
+  /** The page shows its own big buttons for staff on phones, so the bar's links hide there. */
+  staffShortcuts?: boolean;
   /** Coordinators also get a link to the Social post page. */
   coordinator?: boolean;
   overlay?: boolean;
@@ -65,7 +68,7 @@ export function SiteHeader({
         </Typography>
         <ThemeToggle color="inherit" />
         {signedIn ? (
-          <>
+          <Box sx={{ display: staffShortcuts ? { xs: "none", sm: "contents" } : "contents" }}>
             {coordinator && (
               <Button component={NextLink} href="/social" color="inherit" sx={{ minWidth: 0, px: { xs: 1, sm: 1.5 }, whiteSpace: "nowrap" }}>
                 {/* Shorter on phones, so the site name still fits. */}
@@ -91,7 +94,7 @@ export function SiteHeader({
                 "Open the board"
               )}
             </Button>
-          </>
+          </Box>
         ) : (
           <>
             <Button component={NextLink} href="/login" color="inherit" sx={{ minWidth: 0, px: { xs: 1, sm: 1.5 } }}>
