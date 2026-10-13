@@ -87,7 +87,13 @@ WebSocket + bearer token ──────────────────�
 
 ### The mobile app
 
-**Tabs:** **Animals** (where everyone lands after signing in, like the website: every animal with its photo and story, search by name or area, filter dogs or cats and by stage, and follow, like, or offer to adopt or sponsor), **Board** (one stage at a time, for moving animals along), **Following** and **Alerts**. Tapping an animal opens its screen, with the same follow, like and adopt/sponsor buttons, its stage, and its updates.
+**What's in the app** (the same as the website, from the same API and board server):
+- **Tabs:** **Animals** (where everyone lands: every animal with its photo and story, search, dogs/cats and stage filters, follow, like, adopt or sponsor), **Board** (one stage at a time, for moving animals along, with an **Updates** button on each card), **Following**, **Donate** (bank and PayPal details with copy buttons; they live in `packages/shared/src/donation.ts`, shared with the website) and **Alerts**.
+- **An animal's screen** switches between **Details** (facts, photos, stage, like, adopt/sponsor, follow, and **Edit details** for staff) and **Updates** (the box to post one, with **Speak it**, and every update so far). A notification about a new update opens Updates.
+- **Staff:** a **Register** button on Animals and Board opens the form (camera or photo library, uploaded as JPEG; "Rather say it?" fills it in by voice). Coordinators can delete from **Edit details**.
+- **Coordinators:** the megaphone opens **Social media post** (Claude draft, copy caption, photo, the phone's share menu); the people icon opens **Members** to review sign-ups; an offer notification opens who it's from, their email and the animal.
+- **Joining:** "New here? Create an account" on the sign-in screen (`/api/auth/join`), as a member like on the website.
+- **Speech** uses `expo-audio` (recorded as M4A and sent to `/api/transcribe`), photos `expo-image-picker`, sharing `expo-sharing` and `expo-file-system`, copying `expo-clipboard`. After pulling, run `npm install`.
 
 - **Signing in** goes to `POST /api/auth/token`, which runs the same password check as the web login but returns the signed session in the body instead of a cookie. The app keeps it in the phone's secure storage (Keychain on iOS, Keystore on Android) via `expo-secure-store`.
 - **Connecting** sends the token as a WebSocket subprotocol (`bearer.<token>`). The server verifies it before accepting, exactly as it verifies the web cookie. Cookies suit browsers and bearer tokens suit apps; there's no Origin check for tokens, because a web page can't attach one to a socket (that's the cross-site risk the cookie path guards against).

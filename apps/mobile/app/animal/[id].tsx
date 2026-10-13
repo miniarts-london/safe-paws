@@ -2,7 +2,7 @@ import { animalFacts, NEUTERED_LABEL, photos } from "@safe-paws/shared/format";
 import { STAGES, stageLabel } from "@safe-paws/shared/protocol";
 import { useBoard, useCanEdit } from "@safe-paws/shared/store";
 import { timeAgo, useNow } from "@safe-paws/shared/time";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { AnimalActions } from "@/components/AnimalActions";
@@ -73,6 +73,14 @@ export default function AnimalScreen() {
 
         {view === "details" ? (
           <>
+            {canEdit && (
+              <Button
+                label="Edit details"
+                variant="quiet"
+                onPress={() => router.push({ pathname: "/animal-form", params: { id: animal.id } })}
+                style={{ alignSelf: "flex-start", paddingHorizontal: 0, minHeight: 32 }}
+              />
+            )}
             <View style={styles.pills}>
               <Pill active={animal.neutered === "yes"}>{NEUTERED_LABEL[animal.neutered]}</Pill>
               {animal.weightKg === null && <Pill>Not weighed yet</Pill>}

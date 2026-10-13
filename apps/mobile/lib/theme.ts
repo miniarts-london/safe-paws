@@ -17,6 +17,9 @@ const light = {
   cat: "#B93B77",
   onCat: "#ffffff",
   onSea: "#ffffff",
+  // The rescue's name in the header (deep plum, as on the website), and the "live" dot.
+  headerInk: "#5c1e3c",
+  mintDot: "#3c742f",
 };
 
 const dark: typeof light = {
@@ -34,6 +37,8 @@ const dark: typeof light = {
   cat: "#B93B77",
   onCat: "#ffffff",
   onSea: "#2a0f1c",
+  headerInk: "#ebc8d9",
+  mintDot: "#B6DCAD",
 };
 
 export type Theme = typeof light;

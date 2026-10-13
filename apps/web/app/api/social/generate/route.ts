@@ -1,11 +1,22 @@
 import { loadBoard } from "@safe-paws/db";
+import { appCors } from "@/lib/appCors";
 import { draftPost, latestUpdates, TONES, type Tone } from "@/lib/social/claude";
 import { jsonError, photoFrom, requestOrigin, requireCoordinator, SocialError } from "@/lib/social/server";
 
 export const maxDuration = 60;
 
-/** Claude drafts a post from the topic, tone, an animal's details and an optional photo. */
+export function OPTIONS(req: Request) {
+  return new Response(null, { status: 204, headers: appCors(req, "POST") });
+}
+
+/** Claude drafts a post from the topic, tone, an animal's details and an optional photo. Also used by the phone app. */
 export async function POST(req: Request) {
+  const res = await draft(req);
+  for (const [k, v] of Object.entries(appCors(req, "POST"))) res.headers.set(k, v); // the app's web preview
+  return res;
+}
+
+async function draft(req: Request) {
   try {
     await requireCoordinator(req);
     const form = await req.formData();

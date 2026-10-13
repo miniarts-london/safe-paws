@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from "expo-audio";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { appendFile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
@@ -17,7 +18,7 @@ let available: Promise<boolean> | null = null;
  * sends it to ElevenLabs, and the text comes back to `onText` to check before posting.
  * Shows nothing unless speech to text is set up on the website.
  */
-export function SpeakButton({ onText }: { onText: (text: string) => void }) {
+export function SpeakButton({ onText, label = "Speak it" }: { onText: (text: string) => void; label?: string }) {
   const t = useTheme();
   const { state } = useAuth();
   const token = state.status === "signedIn" ? state.session.token : null;
@@ -44,13 +45,7 @@ export function SpeakButton({ onText }: { onText: (text: string) => void }) {
     setWorking(true);
     try {
       const form = new FormData();
-      if (Platform.OS === "web") {
-        const blob = await (await fetch(uri)).blob();
-        form.append("audio", new File([blob], "update.webm", { type: blob.type || "audio/webm" }));
-      } else {
-        // React Native uploads a local file from its uri.
-        form.append("audio", { uri, name: "update.m4a", type: "audio/m4a" } as unknown as Blob);
-      }
+      await appendFile(form, "audio", uri, Platform.OS === "web" ? "update.webm" : "update.m4a", Platform.OS === "web" ? "audio/webm" : "audio/m4a");
       const res = await fetch(`${API_URL}/api/transcribe`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
       const json = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Couldn't turn that into text. Try again, or type the update.");
@@ -111,12 +106,12 @@ export function SpeakButton({ onText }: { onText: (text: string) => void }) {
       ) : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Speak the update"
+          accessibilityLabel={label === "Speak it" ? "Speak the update" : label}
           onPress={start}
           style={({ pressed }) => [styles.button, { borderColor: t.sea, opacity: pressed ? 0.75 : 1 }]}
         >
           <Ionicons name="mic-outline" size={18} color={t.sea} />
-          <Text style={[styles.label, { color: t.sea }]}>Speak it</Text>
+          <Text style={[styles.label, { color: t.sea }]}>{label}</Text>
         </Pressable>
       )}
       {!!error && (

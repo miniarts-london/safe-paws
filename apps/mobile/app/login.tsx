@@ -1,4 +1,5 @@
 import { DEMO_PASSWORD, demoLogins, seedUsers } from "@safe-paws/shared/seed";
+import { router } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +28,7 @@ export default function Login() {
   const input = [styles.input, { backgroundColor: t.ground, borderColor: t.rule, color: t.ink }];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.ground }}>
+    <SafeAreaView edges={["bottom", "left", "right"]} style={{ flex: 1, backgroundColor: t.ground }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={[styles.card, { backgroundColor: t.card, borderColor: t.rule }]}>
@@ -69,6 +70,7 @@ export default function Login() {
               </Text>
             )}
             <Button label="Sign in" variant="primary" busy={busy} onPress={() => submit()} style={{ marginTop: 8 }} />
+            <Button label="New here? Create an account" variant="quiet" onPress={() => router.push("/join")} />
 
             {SHOW_DEMOS && (
               <View style={[styles.demo, { borderTopColor: t.rule }]}>

@@ -11,7 +11,8 @@
     "./time": "./src/time.ts",
     "./stages": "./src/stages.ts",
     "./schemas": "./src/schemas.ts",
-    "./format": "./src/format.ts"
+    "./format": "./src/format.ts",
+    "./donation": "./src/donation.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

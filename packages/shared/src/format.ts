@@ -22,3 +22,9 @@ export function animalFacts(a: Animal) {
 }
 
 export const photos = (a: Animal) => a.media.filter((m) => m.kind === "photo");
+
+/** Neighbourhoods of Alexandria, suggested when registering an animal (along with any already on the board). */
+export const KNOWN_AREAS = [
+  "Agami", "Gleem", "Miami", "Montaza", "Raml Station", "Sidi Bishr", "Sidi Gaber",
+  "Smouha", "Sporting", "Stanley", "Camp Caesar", "Mandara", "Louran", "Bolkly",
+];

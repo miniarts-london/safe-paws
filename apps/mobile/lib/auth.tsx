@@ -10,6 +10,8 @@ type AuthState =
 type Auth = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<string | null>;
+  /** Create an account (as a member) and sign in. Returns an error message, or null. */
+  join: (input: { name: string; email: string; password: string; title: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
@@ -42,12 +44,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
+  const join = useCallback(async (input: { name: string; email: string; password: string; title: string }) => {
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/api/auth/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+    } catch {
+      return `Can't reach the server at ${API_URL}. Check your connection and try again.`;
+    }
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return json.error ?? "Couldn't create your account. Try again.";
+    const session: StoredSession = { token: json.token, userId: json.userId, expiresAt: json.expiresAt };
+    await saveSession(session);
+    setState({ status: "signedIn", session });
+    return null;
+  }, []);
+
   const signOut = useCallback(async () => {
     await clearSession();
     setState({ status: "signedOut" });
   }, []);
 
-  const value = useMemo(() => ({ state, signIn, signOut }), [state, signIn, signOut]);
+  const value = useMemo(() => ({ state, signIn, join, signOut }), [state, signIn, join, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
