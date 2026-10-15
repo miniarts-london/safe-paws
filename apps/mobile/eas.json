@@ -8,8 +8,17 @@
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://safe-paws-seven.vercel.app",
+        "EXPO_PUBLIC_BOARD_WS_URL": "wss://safe-pawsserver-production.up.railway.app"
+      }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://safe-paws-seven.vercel.app",
+        "EXPO_PUBLIC_BOARD_WS_URL": "wss://safe-pawsserver-production.up.railway.app"
+      }
+    }
   }
 }

@@ -7,11 +7,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "org.example.safepaws",
+      "bundleIdentifier": "com.miniarts.egyptanimalsos",
       "supportsTablet": true
     },
     "android": {
-      "package": "org.example.safepaws"
+      "package": "com.miniarts.egyptanimalsos"
     },
     "web": {
       "bundler": "metro",
