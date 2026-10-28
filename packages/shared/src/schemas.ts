@@ -37,6 +37,22 @@ export const approveSchema = z.object({
 });
 export type ApproveInput = z.infer<typeof approveSchema>;
 
+/** Your own name and the line shown under it, from the Profile page. */
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name.").max(60, "Keep your name under 60 characters."),
+  title,
+});
+export type ProfileInput = z.infer<typeof profileSchema>;
+
+export const changePasswordSchema = z.object({
+  current: z.string().min(1, "Enter your current password."),
+  next: z
+    .string()
+    .min(PASSWORD_MIN, `Use at least ${PASSWORD_MIN} characters.`)
+    .max(200, "That password is too long."),
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 export const NOTE_MAX = 1000;
 export const noteSchema = z.object({
   text: z

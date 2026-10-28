@@ -4,10 +4,12 @@ import ArrowForward from "@mui/icons-material/ArrowForward";
 import AddIcon from "@mui/icons-material/Add";
 import CampaignOutlined from "@mui/icons-material/CampaignOutlined";
 import FavoriteBorder from "@mui/icons-material/FavoriteBorder";
+import MapOutlined from "@mui/icons-material/MapOutlined";
 import PetsOutlined from "@mui/icons-material/PetsOutlined";
 import ViewKanbanOutlined from "@mui/icons-material/ViewKanbanOutlined";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import type { Theme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
@@ -24,7 +26,7 @@ export function HomePage({ signedIn, staff = false, coordinator = false }: Props
   return (
     <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", bgcolor: "background.default", position: "relative" }}>
       {/* Floats over the sky, which runs right up to the top of the page. */}
-      <SiteHeader signedIn={signedIn} coordinator={coordinator} staffShortcuts={staff} overlay />
+      <SiteHeader signedIn={signedIn} coordinator={coordinator} staffShortcuts={staff} overlay menu={false} />
 
       <Box
         component="main"
@@ -59,6 +61,7 @@ export function HomePage({ signedIn, staff = false, coordinator = false }: Props
             <Stack component="nav" aria-label="Shortcuts" spacing={1.5} sx={{ ...phoneOnly, width: "100%", pt: 1 }}>
               <Shortcut href="/animals" icon={<PetsOutlined />} label="Animals" />
               <Shortcut href="/board" icon={<ViewKanbanOutlined />} label="Rescue board" />
+              <Shortcut href="/shelter" icon={<MapOutlined />} label="Shelter layout" />
               {coordinator && <Shortcut href="/social" icon={<CampaignOutlined />} label="Social media post" />}
               <Shortcut href="/board?register=1" icon={<AddIcon />} label="Register a new animal" primary />
             </Stack>
@@ -94,6 +97,12 @@ export function HomePage({ signedIn, staff = false, coordinator = false }: Props
               Meet our animals
             </Button>
           </Stack>
+          <Typography sx={{ ...notOnStaffPhones, justifyContent: "center", color: "text.secondary" }}>
+            Coming to visit?&nbsp;
+            <Link component={NextLink} href="/shelter" sx={{ fontWeight: 600 }}>
+              See who&apos;s where
+            </Link>
+          </Typography>
         </Stack>
       </Box>
 

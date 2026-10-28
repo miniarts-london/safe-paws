@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto";
 import {
   approveMember,
+  updateProfile,
   deleteAnimal,
   getUser,
   getUserEmail,
@@ -84,6 +85,13 @@ export const membersList = () => listMembers();
 export async function approve(userId: string, role: StaffRole, title: string, reviewerId: string) {
   const user = await approveMember(userId, role, title, reviewerId);
   if (!user) throw new BoardError("They're already staff, or their account no longer exists.");
+  return replaceUser(user);
+}
+
+/** Your own name and title; everyone's copy updates. */
+export async function saveProfile(userId: string, name: string, title: string) {
+  const user = await updateProfile(userId, name, title);
+  if (!user) throw new BoardError("Your account no longer exists.");
   return replaceUser(user);
 }
 

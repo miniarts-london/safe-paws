@@ -1,13 +1,11 @@
 "use client";
 
 import AddIcon from "@mui/icons-material/Add";
-import Logout from "@mui/icons-material/Logout";
 import Alert from "@mui/material/Alert";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
@@ -17,7 +15,6 @@ import { isStaff, ROLE_LABELS, type User } from "@safe-paws/shared/protocol";
 import NextLink from "next/link";
 import { useBoard } from "@safe-paws/shared/store";
 import { useEffect, useRef, useState } from "react";
-import { logout } from "@/app/login/actions";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
 import { SendContext, useBoardSocket, type Connection } from "@/lib/useBoardSocket";
 import { useAnimalForm } from "@/lib/formStore";
@@ -27,11 +24,14 @@ import { AnimalDirectory } from "./AnimalDirectory";
 import { AnimalDrawer } from "./AnimalDrawer";
 import { AnimalFormDialog } from "./AnimalForm";
 import { Bell } from "./../../Bell";
-import { MembersButton } from "./../../MembersDialog";
+import { AccountMenu } from "./../../AccountMenu";
+import { ProfilePage, SettingsPage } from "../account/AccountPages";
 import { OfferContactDialog } from "./../../OfferContactDialog";
 import { Board } from "./Board";
 import { DonateContent } from "./../donate/DonatePage";
 import { SocialStudio } from "../social/SocialStudio";
+import { ShelterPlan } from "../shelter/ShelterPlan";
+import { OnDutyButton } from "../shelter/OnDutyButton";
 import { MOBILE_NAV_HEIGHT, MobileBoard } from "./MobileBoard";
 import { ThemeToggle } from "./../../ThemeToggle";
 import { Toasts } from "./../../Toasts";
@@ -42,12 +42,14 @@ const CONNECTION: Record<Connection, { label: string; color: "mint" | "default" 
   closed: { label: "Offline", color: "error" },
 };
 
-export type View = "board" | "animals" | "animal" | "donate" | "social";
+export type View = "board" | "animals" | "animal" | "shelter" | "donate" | "social" | "profile" | "settings";
 
 /** The menu. `short` is what phones show, in the menu's own row under the name. */
 const VIEWS: { id: View; label: string; short: string; href: string }[] = [
   { id: "animals", label: "Meet our animals", short: "Animals", href: "/animals" },
   { id: "board", label: "Rescue board", short: "Board", href: "/board" },
+  // Staff arrange it; everyone else sees the layouts staff made public.
+  { id: "shelter", label: "Shelter", short: "Shelter", href: "/shelter" },
   { id: "donate", label: "Donate", short: "Donate", href: "/donate" },
   // Coordinators only.
   { id: "social", label: "Social post", short: "Social", href: "/social" },
@@ -57,11 +59,14 @@ export default function BoardApp({
   initialMe,
   view = "board",
   animalId,
+  email = "",
 }: {
   initialMe: User;
   view?: View;
   /** For view "animal": which animal's page. */
   animalId?: string;
+  /** For view "profile": your email. */
+  email?: string;
 }) {
   const { status, send } = useBoardSocket();
   const board = useBoard((s) => s.board);
@@ -145,36 +150,17 @@ export default function BoardApp({
               label={conn.label}
               sx={{ display: { xs: "none", sm: "inline-flex" } }}
             />
-            {me.role === "coordinator" && <MembersButton />}
-            {me && (
-              <Box sx={{ textAlign: "right", lineHeight: 1.2, display: { xs: "none", sm: "block" } }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {me.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-                  {me.title}
-                </Typography>
-              </Box>
-            )}
+            {/* Staff: "I'm here" at the main shelter, next to their name. */}
+            {canEdit && <OnDutyButton me={me} compact={mobile} onShelterPage={view === "shelter"} />}
+            {/* Name and title: a menu with Profile, and Settings for coordinators. */}
+            <AccountMenu me={me} compact={mobile} />
             <ThemeToggle />
-            <form action={logout}>
-              {mobile ? (
-                // Phones: an icon, to leave room for the name.
-                <IconButton type="submit" aria-label="Sign out" sx={{ color: "text.secondary" }}>
-                  <Logout />
-                </IconButton>
-              ) : (
-                <Button type="submit" variant="outlined" color="inherit" size="small" sx={{ borderColor: "divider", color: "text.secondary" }}>
-                  Sign out
-                </Button>
-              )}
-            </form>
             {!mobile && <Bell />}
           </Toolbar>
           {mobile && nav}
         </AppBar>
 
-        {!canEdit && view !== "donate" && (
+        {!canEdit && (view === "board" || view === "animals" || view === "animal" || view === "social") && (
           <Alert severity="info" sx={{ mx: { xs: 2, sm: 2.5 }, mt: 1.5 }}>
             {welcome ? <strong>Welcome, {me.name}! </strong> : null}
             You can see every animal and follow the ones you care about. If you volunteer with the rescue, a coordinator
@@ -195,6 +181,12 @@ export default function BoardApp({
         ) : board ? (
           view === "social" ? (
             <SocialStudio />
+          ) : view === "profile" ? (
+            <ProfilePage me={me} email={email} />
+          ) : view === "settings" ? (
+            <SettingsPage />
+          ) : view === "shelter" ? (
+            <ShelterPlan />
           ) : view === "animals" ? (
             <AnimalDirectory />
           ) : view === "animal" && animalId ? (

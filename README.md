@@ -119,9 +119,16 @@ Until then everything else works in Expo Go, and the app skips push quietly.
 
 - **Anyone can sign up** at `/register` (linked from the sign-in page) with their name, email, a password (10+ characters) and, optionally, how they help. They're signed straight in as a **member**.
 - **Members can look, not change.** They see every animal, its photos and updates, and can follow animals to get notifications. They don't see the Register button, drag handles, stage picker, "Edit details" or "Post update", and the board server refuses those changes from them anyway, checking their current role on every message.
-- **Coordinators review new members.** A people icon in the header shows how many are waiting. In the Members window, a coordinator picks a role (coordinator, vet, fosterer or sponsor) and the line shown under their name, then clicks **Make staff**, or **Keep as member** to clear them from the list. If the person is on the board at that moment, the edit controls appear straight away with a message saying they're now staff.
+- **Coordinators review new members** on the **Settings** page (`/settings`, coordinators only; anyone else is sent to the Animals page). Click your name in the top bar (an icon on phones) for **Profile**, **Settings** and **Sign out**; a badge there shows how many people are waiting. A coordinator picks a role (coordinator, vet, fosterer or sponsor) and the line shown under their name, then clicks **Make staff**, or **Keep as member** to clear them from the list. If the person is on the board at that moment, the edit controls appear straight away with a message saying they're now staff.
 - New sign-ups are added to the running board server the first time they connect, and coordinators' lists update live. Emails are only ever sent to coordinators.
 - The roles are in `packages/shared/src/protocol.ts` (`STAFF_ROLES`, `isStaff`), and the database change is `packages/db/migrations/002_members.sql`.
+
+### Profile
+
+**Profile** (`/profile`, from the menu under your name) is for everyone signed in: change your name and the line shown under it, and your password.
+
+- **Name and line** are saved through the board server (`profile.update`), so everyone's copy updates at once. Left empty, the line becomes your role ("Vet") or "Member".
+- **Password:** your current one, then the new one (at least 10 characters), checked in a server action (`apps/web/app/profile/actions.ts`). The demo accounts keep the demo password while the demo sign-in buttons are shown, so others can still try them.
 
 ### Home page
 
@@ -173,6 +180,22 @@ On the board each card has two buttons, and each opens its own panel: **Details*
 - **Notifications:** coordinators hear about every new animal and the vet is told it may need a check. New photos or videos notify followers ("Mona added 1 new photo of Luna, who you sponsor."); small corrections don't.
 - The mobile app shows the new details and the photos (sending its token to load them). Registering from the app is a good next step.
 
+### Shelter layout (staff)
+
+`/shelter` (**Shelter** in the menu, and a shortcut on the home page for staff on phones) is a rough plan of each place the animals stay, with each animal dragged to where it is. Staff see and change every layout.
+
+**Visitors and members** see the layouts staff switched to **Show to visitors** (the main shelter; foster homes stay private), read-only, as **Who's where**: the plan, a search, and a list of who's in each area, each name linking to the animal's page. Visitors get there from **Visit** in the top bar or "Coming to visit? See who's where" on the home page; members from **Shelter** in the menu. Visitors see the layout as it was when the page loaded. `GET /api/shelter` gives everyone who isn't staff only the public layouts, and only the animals at the shelter; changes are staff only (403).
+
+- **Layouts:** one per place (the shelter, a foster home…). **Start from an example** gives a row of kennels, quarantine, a cat room, a vet room and the yard to adjust, or start with a blank plan.
+- **Areas:** **Draw an area**, then drag out each one on the plan (Esc or **Done drawing** to stop; **Add area** waits until you have), or **Add area** to drop one in a free spot. Drag an area by its name to move it (the animals inside move with it), and drag its corner to resize it. Click its name to rename or delete it; deleting an area leaves its animals where they are.
+- **Animals:** everyone at the vet, recovering or ready for adoption. Those not on any plan are listed under **Not placed**: drag one onto the plan, or click it and pick an area. Click an animal on the plan to move it to another area, take it off the plan, or open its panel; dragging it back onto the list takes it off too. An animal is only ever in one place. Animals still on the street or adopted don't show (their spot is kept if they come back).
+- **Staff on duty:** at the shelter, press **I'm here** (in the top bar next to your name, or under **On duty today** on the main shelter's layout) so visitors know who to ask. It's only for the main shelter: the first layout shown to visitors. Staff aren't drawn on the plan; everyone, visitors included, sees a list of who's on duty (name and role, e.g. "Dr Karim, Vet"). A check-in lasts until **I've left** or the end of the day, Egypt time (`shelter_staff`, `006_shelter_staff.sql`).
+- **Without dragging:** everything works from the menus, and with the keyboard: arrow keys nudge an animal or an area (Shift for bigger steps), arrow keys on an area's corner resize it, and Delete takes an animal off the plan.
+- **Saving:** each change shows straight away and is saved in order through `POST /api/shelter` (one change at a time, checked with the zod schema in `packages/shared/src/shelter.ts`); the answer replaces the page's copy, so it settles on what's saved. Changes other staff make appear when the tab comes back into view, and every 20 seconds.
+- **Positions are percentages** of the plan (which keeps a 3:2 shape), so it looks the same on any screen; on phones the plan scrolls sideways.
+
+The code is in `apps/web/components/screens/shelter/ShelterPlan.tsx` (staff), `ShelterMap.tsx` (read-only), `apps/web/lib/useShelter.ts`, `apps/web/app/api/shelter/route.ts` and `packages/db/src/shelter.ts`.
+
 ### Social post (coordinators)
 
 `/social` (**Social post** in the menu, coordinators only; everyone else is sent back to the board and the API answers 403) writes a post with Claude and shares it to LinkedIn and a Facebook Page. It's the LinkedIn post studio, moved in.
@@ -217,6 +240,7 @@ The code is in `apps/web/lib/social/`, `apps/web/app/api/social/` and `apps/web/
 | `animal_likes`, `animal_requests` | likes, and offers to adopt or sponsor with the person's message |
 | `notifications` | one row per person per message, with a read flag |
 | `push_tokens` | each phone's Expo push token |
+| `shelter_layouts`, `shelter_areas`, `shelter_placements`, `shelter_staff` | shelter plans (and whether visitors can see each one), their labelled areas, where each animal is (one row per animal), and who's checked in today and where (`004`–`006`) |
 
 **How the server uses it.** The board server reads the whole board into memory when it starts (a rescue has hundreds of animals, not millions), then for each change: write it to Postgres in one transaction, and only if that succeeds update memory and tell everyone. Changes are applied one at a time, so two people dragging at once can't interleave. The database checks the rules too (stage names, sex, positive weight, real uploads), and a refused change comes back to the person as a plain message rather than a crash.
 

@@ -146,6 +146,8 @@ export type BoardClientMessage =
   | { type: "member.approve"; userId: string; role: StaffRole; title: string }
   /** Coordinators only: keep them as a member and take them off the "new" list. */
   | { type: "member.keep"; userId: string }
+  /** Anyone signed in: their own name and the line under it (Profile page). */
+  | { type: "profile.update"; name: string; title: string }
   /** Mobile only: where to send push notifications while the app is closed. */
   | { type: "push.register"; token: string }
   | { type: "push.unregister"; token: string };

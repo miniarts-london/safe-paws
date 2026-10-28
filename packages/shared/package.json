@@ -12,7 +12,8 @@
     "./stages": "./src/stages.ts",
     "./schemas": "./src/schemas.ts",
     "./format": "./src/format.ts",
-    "./donation": "./src/donation.ts"
+    "./donation": "./src/donation.ts",
+    "./shelter": "./src/shelter.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

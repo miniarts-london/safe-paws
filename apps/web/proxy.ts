@@ -9,10 +9,10 @@ export function proxy(req: NextRequest) {
   const signedIn = !!verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   const path = req.nextUrl.pathname;
 
-  // The Animals pages are public (read-only for visitors); the board needs an account.
-  if (path.startsWith("/board") && !signedIn) return NextResponse.redirect(new URL("/login", req.nextUrl));
+  // The Animals and Shelter pages are public (read-only for visitors); the board, profile and settings need an account.
+  if (["/board", "/profile", "/settings"].some((p) => path.startsWith(p)) && !signedIn) return NextResponse.redirect(new URL("/login", req.nextUrl));
   if ((path === "/login" || path === "/register") && signedIn) return NextResponse.redirect(new URL("/animals", req.nextUrl));
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/board/:path*", "/login", "/register"] };
+export const config = { matcher: ["/board/:path*", "/profile", "/settings", "/login", "/register"] };

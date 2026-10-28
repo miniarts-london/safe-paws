@@ -25,7 +25,7 @@ export const demoAccounts = demoLogins.map((a) => {
 // as long as a wrong password and response time doesn't reveal who has an account.
 const DUMMY_HASH = "scrypt$0gXr0xrEpFLWx3pnnDfT6g$dj23nSabqgkg44L0fWJnT3pzcuNQjL_BdVAwkEoeF-w";
 
-async function verifyPassword(password: string, stored: string) {
+export async function verifyPassword(password: string, stored: string) {
   const [scheme, salt, hash] = stored.split("$");
   if (scheme !== "scrypt" || !salt || !hash) return false;
   const expected = Buffer.from(hash, "base64url");

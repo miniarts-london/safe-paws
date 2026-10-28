@@ -21,6 +21,25 @@ export async function getUser(id: string): Promise<User | null> {
   return rows[0] ?? null;
 }
 
+/** Someone changes their own name and the line under it. Returns them as everyone sees them. */
+export async function updateProfile(id: string, name: string, title: string): Promise<User | null> {
+  const { rows } = await pool().query<User>(
+    "update users set name = $2, title = $3 where id = $1 returning id, name, role, title",
+    [id, name, title],
+  );
+  return rows[0] ?? null;
+}
+
+/** For changing a password: the stored hash, or null. */
+export async function getPasswordHash(id: string): Promise<string | null> {
+  const { rows } = await pool().query<{ password_hash: string }>("select password_hash from users where id = $1", [id]);
+  return rows[0]?.password_hash ?? null;
+}
+
+export async function setPasswordHash(id: string, hash: string) {
+  await pool().query("update users set password_hash = $2 where id = $1", [id, hash]);
+}
+
 /** For coordinators to get in touch, e.g. about an offer to adopt. */
 export async function getUserEmail(id: string): Promise<string | null> {
   const { rows } = await pool().query<{ email: string }>("select email from users where id = $1", [id]);

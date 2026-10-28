@@ -14,9 +14,10 @@ import {
   type StageId,
   type User,
   isStaff,
+  ROLE_LABELS,
 } from "@safe-paws/shared/protocol";
 import { readCookie, SESSION_COOKIE, verifySessionToken, type Session } from "@safe-paws/shared/session";
-import { animalDetailsSchema, approveSchema, requestSchema } from "@safe-paws/shared/schemas";
+import { animalDetailsSchema, approveSchema, profileSchema, requestSchema } from "@safe-paws/shared/schemas";
 import { notifyCreate, notifyMove, notifyNote, notifyRequest, notifyUpdate } from "./notify";
 import { registerPushToken, sendPush, unregisterPushToken } from "./push";
 import {
@@ -40,6 +41,7 @@ import {
   setLiked,
   updateAnimal,
   removeAnimal,
+  saveProfile,
 } from "./state";
 
 // Hosts such as Render, Railway and Fly tell the server which port to use in PORT.
@@ -279,6 +281,14 @@ async function handle(ws: Client, msg: BoardClientMessage) {
           .then((notifications) => send(ws, { type: "welcome", userId, users: getUsers(), board: getBoard(), notifications }))
           .catch(console.error);
       }
+      return;
+    }
+    case "profile.update": {
+      const parsed = profileSchema.safeParse(msg);
+      if (!parsed.success) throw new BoardError(parsed.error.issues[0]?.message ?? "Check your name.");
+      // Left empty: what they do, e.g. "Vet".
+      const title = parsed.data.title || ROLE_LABELS[actor.role];
+      introduce(await saveProfile(actor.id, parsed.data.name, title));
       return;
     }
     case "member.keep":

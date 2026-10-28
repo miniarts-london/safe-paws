@@ -50,3 +50,5 @@ dist/
 
 # uploaded photos and videos (demo storage)
 .uploads/
+
+reports/.venv/
