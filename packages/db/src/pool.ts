@@ -14,7 +14,13 @@ export function pool(): pg.Pool {
     if (!process.env.DATABASE_URL && process.env.NODE_ENV === "production") {
       throw new Error("DATABASE_URL must be set in production.");
     }
-    g.__safePawsPool = new pg.Pool({ connectionString, max: 10 });
+    // Hosted databases (Neon) close connections that sit idle, so don't keep them long.
+    const p = new pg.Pool({ connectionString, max: 10, idleTimeoutMillis: 10_000 });
+    // A connection closed by the database while idle in the pool. Without this
+    // listener Node treats it as an uncaught error and stops the whole process;
+    // the pool just opens a fresh connection next time.
+    p.on("error", (err) => console.warn("Database connection closed while idle:", err.message));
+    g.__safePawsPool = p;
   }
   return g.__safePawsPool;
 }
