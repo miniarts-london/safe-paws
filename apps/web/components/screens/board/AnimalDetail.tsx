@@ -41,6 +41,17 @@ export function AnimalDetail({ animalId }: { animalId: string }) {
   );
 }
 
+/** Just the profile, without the page around it: for the side panel on the Visit page. */
+export function AnimalProfile({ animal }: { animal: Animal }) {
+  const { offer, element: offerFlow } = useOfferFlow();
+  return (
+    <>
+      <Profile animal={animal} onOffer={() => offer(animal)} />
+      {offerFlow}
+    </>
+  );
+}
+
 const NEUTERED_ANSWER: Record<Animal["neutered"], string> = { yes: "Yes", no: "No", unknown: "Not sure" };
 
 function Profile({ animal, onOffer }: { animal: Animal; onOffer: () => void }) {

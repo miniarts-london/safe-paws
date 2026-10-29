@@ -1,6 +1,8 @@
 "use client";
 
 import AddOutlined from "@mui/icons-material/AddOutlined";
+import Home from "@mui/icons-material/Home";
+import HomeOutlined from "@mui/icons-material/HomeOutlined";
 import AutoAwesomeMosaicOutlined from "@mui/icons-material/AutoAwesomeMosaicOutlined";
 import CheckOutlined from "@mui/icons-material/CheckOutlined";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
@@ -29,6 +31,7 @@ import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
+import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import { stageLabel, type Animal } from "@safe-paws/shared/protocol";
 import {
@@ -55,8 +58,8 @@ import { useBoard, useCanEdit, useMe } from "@safe-paws/shared/store";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { AnimalAvatar } from "@/components/AnimalAvatar";
 import { MOBILE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
-import { useShelter } from "@/lib/useShelter";
-import { ShelterMap, StaffFace, areaFillSx, planSurfaceSx, staffLine } from "./ShelterMap";
+import { useShelter, useShelterStore } from "@/lib/useShelter";
+import { MARKER_PHOTO, MarkerKey, ShelterMap, StaffFace, areaFillSx, markerNameSx, markerSx, planSurfaceSx, staffLine } from "./ShelterMap";
 
 /**
  * Shelter layouts: a rough plan of each place animals stay (labelled areas such
@@ -161,7 +164,8 @@ function ShelterEditor() {
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
-  const [focusLabel, setFocusLabel] = useState(0);
+  /** The area whose name is being typed, right on the plan. */
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview>(null);
   const [menu, setMenu] = useState<MenuFor>(null);
   const [naming, setNaming] = useState<{ mode: "create" | "rename"; name: string } | null>(null);
@@ -183,13 +187,9 @@ function ShelterEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawing]);
 
-  if (!animals || (!state && !error)) {
-    return (
-      <Stack spacing={2} sx={{ alignItems: "center", py: 8 }}>
-        <CircularProgress size={28} />
-        <Typography color="text.secondary">Loading the layouts…</Typography>
-      </Stack>
-    );
+  // Until the layouts and the animals have both arrived, nothing can be dragged yet: say so over the plan.
+  if (!animals || !state) {
+    return <EditorLoading mobile={mobile} error={animals ? error : null} />;
   }
 
   const here = Object.values(animals).filter(atShelter).sort(byName);
@@ -203,9 +203,8 @@ function ShelterEditor() {
 
   const shownAreas = areas.map((a) => (preview?.kind === "area" && preview.area.id === a.id ? preview.area : a));
   const drawn = preview?.kind === "draw" ? preview.rect : null;
-  // Staff check in at the main shelter only (the first layout shown to visitors).
+  // Staff check in at the main shelter only (the layout marked Main).
   const main = mainShelter(layouts);
-  const atMain = !!layout && layout.id === main?.id;
   const myCheckIn = main?.staff.find((st) => st.userId === me?.id);
   const shownPlacements: Placement[] = placements.map((p) => {
     if (preview?.kind === "animal" && preview.animalId === p.animalId) return { ...p, x: preview.x, y: preview.y };
@@ -257,7 +256,7 @@ function ShelterEditor() {
     const area = clampArea({ id: crypto.randomUUID(), label: nextAreaLabel(areas), ...rect });
     saveArea(area);
     setSelectedAreaId(area.id);
-    setFocusLabel((n) => n + 1);
+    setEditingAreaId(area.id);
     setLive(`${area.label} added. Type its name.`);
   };
   /** A new area in the first empty corner of the plan, for people who can't drag. */
@@ -416,8 +415,11 @@ function ShelterEditor() {
                   color: l.id === layout?.id ? "primary.main" : "text.primary",
                 }}
               >
-                <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {l.name}
+                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
+                  {l.main && <HomeOutlined sx={{ fontSize: 16, flexShrink: 0 }} titleAccess="Main shelter" />}
+                  <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {l.name}
+                  </Box>
                 </Box>
                 <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
                   {n} {n === 1 ? "animal" : "animals"}
@@ -496,16 +498,21 @@ function ShelterEditor() {
   );
 
   const others = (main?.staff ?? []).filter((st) => st.userId !== me?.id);
-  const duty = layout && (atMain || !main) && (
+  // The same check-in as "I'm here" in the top bar, for the main shelter, whichever layout is open.
+  const duty = layout && (
     <Paper variant="outlined" component="section" aria-labelledby="on-duty-title" sx={{ p: 1.5 }}>
       <Typography id="on-duty-title" component="h2" variant="overline" color="text.secondary" sx={{ px: 1 }}>
         On duty today
       </Typography>
+      {main && (
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ px: 1, mt: -0.5, mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
+          <HomeOutlined sx={{ fontSize: 14 }} aria-hidden /> At {main.name}
+        </Typography>
+      )}
       <Box sx={{ px: 1, pb: 0.5 }}>
         {!main ? (
           <Typography variant="body2" color="text.secondary">
-            Staff check in at the main shelter, so visitors know who to ask. Turn on <strong>Show to visitors</strong> for the
-            main shelter to start.
+            Staff check in at the main shelter, so visitors know who to ask. Open the shelter&apos;s layout and press the house next to its name to make it the main shelter.
           </Typography>
         ) : !myCheckIn ? (
           <>
@@ -519,7 +526,7 @@ function ShelterEditor() {
         ) : (
           <>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              You&apos;re on duty today. Visitors can see you&apos;re here.
+              You&apos;re on duty today.{main.public ? " Visitors can see you're here." : ""}
             </Typography>
             <Button variant="outlined" size="small" color="inherit" onClick={checkOut}>
               I&apos;ve left
@@ -559,6 +566,31 @@ function ShelterEditor() {
             <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
+        {/* Which layout staff check in at ("I'm here"). Only one is the main shelter. */}
+        {layout.main ? (
+          <Tooltip title="Main shelter: staff check in here with I'm here">
+            <Box
+              role="img"
+              tabIndex={0}
+              aria-label="Main shelter: staff check in here"
+              sx={{ display: "inline-flex", p: 1, color: "primary.main", borderRadius: "50%", "&:focus-visible": { outline: 2, outlineColor: "primary.main" } }}
+            >
+              <Home fontSize="small" />
+            </Box>
+          </Tooltip>
+        ) : (
+          <Tooltip title="Make this the main shelter">
+            <IconButton
+              aria-label={`Make ${layout.name} the main shelter`}
+              onClick={() => {
+                send({ op: "layout.main", layoutId: layout.id });
+                setLive(`${layout.name} is now the main shelter. Staff check in here.`);
+              }}
+            >
+              <HomeOutlined fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Stack>
       <Typography variant="caption" color="text.secondary" role="status" sx={{ minWidth: 56 }}>
         {saving ? "Saving…" : ""}
@@ -578,7 +610,7 @@ function ShelterEditor() {
       <Button variant="outlined" startIcon={<AddOutlined />} onClick={addAreaWithoutDrawing} disabled={drawing}>
         Add area
       </Button>
-      <Box sx={{ flexBasis: "100%", display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 1.5 }}>
+      <Box sx={{ flexBasis: "100%", display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 1.5, rowGap: 0.5 }}>
         <FormControlLabel
           control={
             <Switch
@@ -593,26 +625,13 @@ function ShelterEditor() {
         />
         <Typography variant="body2" color="text.secondary">
           {layout.public
-            ? "Members and visitors who aren't signed in can see this layout on the Shelter page, so they know where to find each animal."
-            : "Only staff can see this layout. Turn this on for the main shelter; leave foster homes private."}
+            ? "Members and visitors who aren't signed in can see this layout on the Visit page, so they know where to find each animal."
+            : layout.main
+              ? "Only staff can see this layout, so visitors can't see who's on duty either. Turn this on for the main shelter."
+              : "Only staff can see this layout. Leave foster homes private."}
         </Typography>
       </Box>
     </Stack>
-  );
-
-  const areaPanel = selectedArea && (
-    <AreaPanel
-      key={selectedArea.id}
-      area={selectedArea}
-      count={countIn(selectedArea)}
-      focus={focusLabel}
-      onRename={(label) => {
-        saveArea({ ...selectedArea, label });
-        setLive(`Renamed to ${label}.`);
-      }}
-      onDelete={() => setDeleting("area")}
-      onDone={() => setSelectedAreaId(null)}
-    />
   );
 
   const plan = layout && (
@@ -652,6 +671,24 @@ function ShelterEditor() {
                 setSelectedAreaId(a.id);
                 setDrawing(false);
               })}
+              editing={editingAreaId === a.id}
+              onEdit={() => {
+                setSelectedAreaId(a.id);
+                setEditingAreaId(a.id);
+              }}
+              onRename={(label) => {
+                setEditingAreaId(null);
+                const saved = areas.find((x) => x.id === a.id);
+                if (saved && label !== saved.label) {
+                  saveArea({ ...saved, label });
+                  setLive(`Renamed to ${label}.`);
+                }
+              }}
+              onCancelEdit={() => setEditingAreaId(null)}
+              onDelete={() => {
+                setSelectedAreaId(a.id);
+                setDeleting("area");
+              }}
               onKeyMove={(e) => nudgeArea(e, areas.find((x) => x.id === a.id)!, false)}
               onKeyResize={(e) => nudgeArea(e, areas.find((x) => x.id === a.id)!, true)}
               handlers={handlers}
@@ -668,7 +705,7 @@ function ShelterEditor() {
               component="button"
               type="button"
               aria-haspopup="menu"
-              aria-label={`${a.name}, ${stageLabel(a.stage)}, ${area ? `in ${area.label}` : "not in an area"}`}
+              aria-label={`${a.name}, ${a.sex}, ${stageLabel(a.stage)}, ${area ? `in ${area.label}` : "not in an area"}`}
               aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Delete"
               onPointerDown={(e: PointerEvent<HTMLElement>) =>
                 begin(e, { kind: "animal", from: "plan", animalId: p.animalId, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, origin: { x: p.x, y: p.y }, moved: false })
@@ -680,32 +717,20 @@ function ShelterEditor() {
               }}
               onKeyDown={(e: KeyboardEvent) => nudgeAnimal(e, p)}
               sx={{
-                position: "absolute",
+                ...markerSx,
                 left: `${p.x}%`,
                 top: `${p.y}%`,
-                transform: "translate(-50%, -50%)",
                 zIndex: dragging ? 4 : 3,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 0.25,
-                width: 84,
-                p: 0.5,
-                border: 1,
-                borderColor: dragging ? "primary.main" : "divider",
-                borderRadius: 2,
-                bgcolor: "background.paper",
-                color: "text.primary",
-                font: "inherit",
                 cursor: dragging ? "grabbing" : "grab",
                 touchAction: "none",
-                boxShadow: dragging ? 6 : 1,
                 opacity: dragging && preview.overTray ? 0.5 : 1,
-                "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
               }}
             >
-              <AnimalAvatar animal={a} size={32} />
-              <Box component="span" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <AnimalAvatar animal={a} size={MARKER_PHOTO} />
+              <Box
+                component="span"
+                sx={markerNameSx(a.sex, dragging)}
+              >
                 {a.name}
               </Box>
             </Box>
@@ -758,7 +783,8 @@ function ShelterEditor() {
           </Stack>
         )}
       </Box>
-      <Typography id="shelter-plan-help" variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
+      <MarkerKey />
+      <Typography id="shelter-plan-help" variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
         {drawing
           ? "Drag on the plan to draw each area. Press Esc to stop."
           : mobile
@@ -769,7 +795,12 @@ function ShelterEditor() {
   );
 
   return (
-    <Box sx={{ px: { xs: 2, sm: 2.5 }, py: 2, flex: 1 }}>
+    <Box
+      // Without this, grabbing an animal's photo can start the browser's own image drag,
+      // which swallows the gesture and leaves the page stuck until it finishes.
+      onDragStart={(e) => e.preventDefault()}
+      sx={{ px: { xs: 2, sm: 2.5 }, py: 2, flex: 1, "& img": { WebkitUserDrag: "none", userSelect: "none" } }}
+    >
       <p role="status" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
         {live}
       </p>
@@ -821,7 +852,6 @@ function ShelterEditor() {
             </Button>
           </Stack>
           {toolbar}
-          {areaPanel}
           {plan}
           {duty}
           {tray}
@@ -835,8 +865,7 @@ function ShelterEditor() {
           </Stack>
           <Stack spacing={1.5}>
             {toolbar}
-            {areaPanel}
-            {plan}
+              {plan}
           </Stack>
         </Box>
       )}
@@ -973,9 +1002,14 @@ function AreaBox({
   count,
   selected,
   moving,
+  editing,
   onGrab,
   onResize,
   onSelect,
+  onEdit,
+  onRename,
+  onCancelEdit,
+  onDelete,
   onKeyMove,
   onKeyResize,
   handlers,
@@ -984,9 +1018,14 @@ function AreaBox({
   count: number;
   selected: boolean;
   moving: boolean;
+  editing: boolean;
   onGrab: (e: PointerEvent<HTMLElement>) => void;
   onResize: (e: PointerEvent<HTMLElement>) => void;
   onSelect: () => void;
+  onEdit: () => void;
+  onRename: (label: string) => void;
+  onCancelEdit: () => void;
+  onDelete: () => void;
   onKeyMove: (e: KeyboardEvent) => void;
   onKeyResize: (e: KeyboardEvent) => void;
   handlers: Record<string, (e: PointerEvent<HTMLElement>) => void>;
@@ -1005,51 +1044,70 @@ function AreaBox({
         pointerEvents: "none",
       })}
     >
-      <Box
-        component="button"
-        type="button"
-        aria-pressed={selected}
-        aria-label={`${area.label}, ${count} ${count === 1 ? "animal" : "animals"}. Arrow keys move it.`}
-        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
-        onPointerDown={onGrab}
-        {...handlers}
-        onClick={onSelect}
-        onKeyDown={onKeyMove}
-        sx={{
-          pointerEvents: "auto",
-          position: "absolute",
-          left: 0,
-          top: 0,
-          maxWidth: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: 0.75,
-          px: 1,
-          py: 0.25,
-          border: 0,
-          borderBottomRightRadius: 8,
-          borderTopLeftRadius: 6,
-          bgcolor: selected ? "primary.main" : "rgba(60, 116, 47, 0.14)",
-          color: selected ? "primary.contrastText" : "text.primary",
-          font: "inherit",
-          fontSize: 13,
-          fontWeight: 650,
-          cursor: moving ? "grabbing" : "grab",
-          touchAction: "none",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
-        }}
-      >
-        <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-          {area.label}
-        </Box>
-        {count > 0 && (
-          <Box component="span" aria-hidden sx={{ opacity: 0.75, fontWeight: 500 }}>
-            {count}
+      {editing ? (
+        <AreaNameInput area={area} onDone={onRename} onCancel={onCancelEdit} />
+      ) : (
+        <Box sx={{ position: "absolute", left: 0, top: 0, maxWidth: "100%", display: "flex", alignItems: "flex-start" }}>
+          <Box
+            component="button"
+            type="button"
+            aria-pressed={selected}
+            aria-label={`${area.label}, ${count} ${count === 1 ? "animal" : "animals"}. Arrow keys move it.`}
+            aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+            onPointerDown={onGrab}
+            {...handlers}
+            onClick={onSelect}
+            onDoubleClick={onEdit}
+            onKeyDown={onKeyMove}
+            sx={{
+              pointerEvents: "auto",
+              minWidth: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              px: 1,
+              py: 0.25,
+              border: 0,
+              borderBottomRightRadius: 8,
+              borderTopLeftRadius: 6,
+              bgcolor: selected ? "primary.main" : "rgba(60, 116, 47, 0.14)",
+              color: selected ? "primary.contrastText" : "text.primary",
+              font: "inherit",
+              fontSize: 13,
+              fontWeight: 650,
+              cursor: moving ? "grabbing" : "grab",
+              touchAction: "none",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
+            }}
+          >
+            <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+              {area.label}
+            </Box>
+            {count > 0 && (
+              <Box component="span" aria-hidden sx={{ opacity: 0.75, fontWeight: 500 }}>
+                {count}
+              </Box>
+            )}
           </Box>
-        )}
-      </Box>
+          {/* Once selected: rename (or double-click the name) and delete, right here on the plan. */}
+          {selected && (
+            <Stack direction="row" sx={{ pointerEvents: "auto", ml: 0.25, bgcolor: "background.paper", borderRadius: 1, boxShadow: 1 }}>
+              <Tooltip title="Rename">
+                <IconButton size="small" aria-label={`Rename ${area.label}`} onClick={onEdit} sx={{ p: 0.25 }}>
+                  <EditOutlined sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton size="small" aria-label={`Delete ${area.label}`} onClick={onDelete} sx={{ p: 0.25 }}>
+                  <DeleteOutlined sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          )}
+        </Box>
+      )}
       {selected && (
         <Box
           component="button"
@@ -1083,67 +1141,58 @@ function AreaBox({
   );
 }
 
-/** Rename or delete the selected area. */
-function AreaPanel({
-  area,
-  count,
-  focus,
-  onRename,
-  onDelete,
-  onDone,
-}: {
-  area: ShelterArea;
-  count: number;
-  focus: number;
-  onRename: (label: string) => void;
-  onDelete: () => void;
-  onDone: () => void;
-}) {
+/** Typing an area's name on the plan: Enter or clicking away saves, Esc puts the old name back. */
+function AreaNameInput({ area, onDone, onCancel }: { area: ShelterArea; onDone: (label: string) => void; onCancel: () => void }) {
   const [label, setLabel] = useState(area.label);
-  const [prev, setPrev] = useState(area.label);
-  // Someone else renamed it, or it was saved: show the saved name.
-  if (area.label !== prev) {
-    setPrev(area.label);
-    setLabel(area.label);
-  }
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (focus > 0) ref.current?.select();
-  }, [focus]);
-  const trimmed = label.trim();
-  const commit = () => {
-    if (trimmed && trimmed !== area.label) onRename(trimmed);
-    else setLabel(area.label);
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  const finish = () => {
+    const trimmed = label.trim();
+    if (trimmed) onDone(trimmed);
+    else onCancel();
   };
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-      <TextField
-        inputRef={ref}
-        size="small"
-        label="Area name"
-        value={label}
-        onChange={(e) => setLabel(e.target.value.slice(0, AREA_LABEL_MAX))}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            commit();
-          }
-        }}
-        error={!trimmed}
-        helperText={!trimmed ? "Give the area a name." : undefined}
-        sx={{ flex: 1, minWidth: 180 }}
-      />
-      <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>
-        {count} {count === 1 ? "animal" : "animals"}
-      </Typography>
-      <Button color="error" startIcon={<DeleteOutlined />} onClick={onDelete}>
-        Delete area
-      </Button>
-      <Button variant="outlined" onClick={onDone}>
-        Done
-      </Button>
-    </Paper>
+    <Box
+      component="input"
+      ref={ref}
+      aria-label="Area name"
+      value={label}
+      maxLength={AREA_LABEL_MAX}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)}
+      onBlur={finish}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        }
+      }}
+      onPointerDown={(e: PointerEvent) => e.stopPropagation()}
+      sx={{
+        pointerEvents: "auto",
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: "min(100%, 180px)",
+        px: 1,
+        py: 0.25,
+        border: 2,
+        borderColor: "primary.main",
+        borderRadius: 1,
+        bgcolor: "background.paper",
+        color: "text.primary",
+        font: "inherit",
+        fontSize: 13,
+        fontWeight: 650,
+        outline: "none",
+      }}
+    />
   );
 }
 
@@ -1205,5 +1254,82 @@ function NameDialog({
         </DialogActions>
       </form>
     </Dialog>
+  );
+}
+
+/**
+ * The Shelter page before it can be used: the same shape as the editor, with
+ * the plan greyed out under a message, so nobody tries to drag before it works.
+ */
+function EditorLoading({ mobile, error }: { mobile: boolean; error: string | null }) {
+  const plan = (
+    <Box sx={{ overflowX: "auto", pb: 1, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 } }}>
+      <Box sx={(t) => planSurfaceSx(t)}>
+        <Stack
+          role={error ? "alert" : "status"}
+          spacing={1.5}
+          sx={(t) => ({
+            position: "absolute",
+            inset: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            p: 3,
+            textAlign: "center",
+            bgcolor: "rgba(255, 255, 255, 0.55)",
+            ...(error ? null : { cursor: "progress" }),
+            ...t.applyStyles("dark", { bgcolor: "rgba(0, 0, 0, 0.3)" }),
+          })}
+        >
+          {error ? (
+            <>
+              <Typography sx={{ maxWidth: 420 }}>Couldn&apos;t load the layout. {error}</Typography>
+              <Button variant="outlined" onClick={() => void useShelterStore.getState().load()}>
+                Try again
+              </Button>
+            </>
+          ) : (
+            <>
+              <CircularProgress size={32} aria-hidden />
+              <Typography sx={{ fontWeight: 600 }}>Getting the layout ready…</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 360 }}>
+                You can drag animals and areas as soon as it&apos;s loaded.
+              </Typography>
+            </>
+          )}
+        </Stack>
+      </Box>
+    </Box>
+  );
+  const toolbar = <Skeleton variant="text" width={220} sx={{ fontSize: "1.6rem" }} />;
+  const panel = (lines: number) => (
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Skeleton variant="text" width={90} />
+      {Array.from({ length: lines }, (_, i) => (
+        <Skeleton key={i} variant="text" width={`${85 - i * 12}%`} />
+      ))}
+    </Paper>
+  );
+  return (
+    <Box sx={{ px: { xs: 2, sm: 2.5 }, py: 2, flex: 1 }} aria-busy={!error}>
+      {mobile ? (
+        <Stack spacing={2}>
+          <Skeleton variant="rounded" height={40} />
+          {toolbar}
+          {plan}
+        </Stack>
+      ) : (
+        <Box sx={{ display: "grid", gridTemplateColumns: "260px minmax(0, 1fr)", gap: 2.5, alignItems: "start" }}>
+          <Stack spacing={2}>
+            {panel(2)}
+            {panel(3)}
+            {panel(3)}
+          </Stack>
+          <Stack spacing={1.5}>
+            {toolbar}
+            {plan}
+          </Stack>
+        </Box>
+      )}
+    </Box>
   );
 }

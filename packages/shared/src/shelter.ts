@@ -11,16 +11,13 @@ import type { Animal, Role, StageId } from "./protocol";
  * A layout marked public is also shown, read-only, to members and to visitors
  * who aren't signed in, so they know where to find each animal when they visit.
  *
- * Staff on duty check in at the main shelter (the layout shown to visitors) and
- * put themselves where they're working, so visitors know who to ask. A check-in
- * lasts until they check out or the day ends (Egypt time).
+ * One layout is marked as the main shelter. Staff on duty check in there, so
+ * visitors know who to ask. A check-in lasts until they check out or the day
+ * ends (Egypt time).
  */
 
-/**
- * The main shelter: the first layout shown to visitors. Staff check in here.
- * Layouts come oldest first, so it stays the same one until it's made private.
- */
-export const mainShelter = <T extends { public: boolean }>(layouts: T[]): T | undefined => layouts.find((l) => l.public);
+/** The main shelter, where staff check in. Staff choose it; the first layout made starts as main. */
+export const mainShelter = <T extends { main: boolean }>(layouts: T[]): T | undefined => layouts.find((l) => l.main);
 
 /** Days end at midnight here, where the rescue is. */
 export const SHELTER_TIME_ZONE = "Africa/Cairo";
@@ -46,6 +43,8 @@ export type ShelterLayout = {
   name: string;
   /** Shown to everyone, visitors included, so they know where to find each animal. */
   public: boolean;
+  /** The main shelter: where staff check in. Only one layout is. */
+  main: boolean;
   areas: ShelterArea[];
   placements: Placement[];
   staff: StaffSpot[];
@@ -80,15 +79,15 @@ export function areaAt(areas: ShelterArea[], x: number, y: number): ShelterArea 
 }
 
 /** Room for a marker: nobody else's this close. */
-/** Markers are about 84px wide, which is up to 13% of the narrowest plan (640px). */
-const isFree = (taken: { x: number; y: number }[], x: number, y: number) => !taken.some((p) => Math.abs(p.x - x) < 10 && Math.abs(p.y - y) < 14);
+/** Markers are about 84px wide and 70px tall: up to 13% of the narrowest plan (640px) across, and 16% down. */
+const isFree = (taken: { x: number; y: number }[], x: number, y: number) => !taken.some((p) => Math.abs(p.x - x) < 10 && Math.abs(p.y - y) < 13);
 
 /**
  * Where to put an animal chosen from a menu rather than dragged: the first free
  * spot in a grid inside the area (below its label), else its middle.
  */
 export function spotInArea(area: Rect, taken: { x: number; y: number }[]): { x: number; y: number } {
-  for (let y = area.y + 12; y <= area.y + area.h - 6; y += 14) {
+  for (let y = area.y + 10; y <= area.y + area.h - 8; y += 13) {
     for (let x = area.x + 6; x <= area.x + area.w - 4; x += 10) {
       if (isFree(taken, x, y)) return clampPoint(x, y);
     }
@@ -135,6 +134,8 @@ export const shelterChangeSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("layout.rename"), layoutId: id, name }),
   /** Show the layout to everyone (members and visitors), or to staff only. */
   z.object({ op: z.literal("layout.public"), layoutId: id, public: z.boolean() }),
+  /** Make this layout the main shelter (and no other). */
+  z.object({ op: z.literal("layout.main"), layoutId: id }),
   /** Its areas go with it, and its animals go back to "Not placed". */
   z.object({ op: z.literal("layout.delete"), layoutId: id }),
   /** Adds or updates an area. Moving it moves the animals inside it too. */
@@ -171,10 +172,21 @@ export function applyShelterChange(
   switch (change.op) {
     case "layout.create":
       return {
-        layouts: [...state.layouts, { id: change.id, name: change.name.trim(), public: false, areas: [], placements: [], staff: [] }],
+        layouts: [
+          ...state.layouts,
+          // The first layout starts as the main shelter.
+          { id: change.id, name: change.name.trim(), public: false, main: !mainShelter(state.layouts), areas: [], placements: [], staff: [] },
+        ],
       };
     case "layout.rename":
       return withLayout(change.layoutId, (l) => ({ ...l, name: change.name.trim() }));
+    case "layout.main": {
+      // Check-ins belong to the main shelter, so they move with it.
+      const onDuty = state.layouts.flatMap((l) => l.staff);
+      return {
+        layouts: state.layouts.map((l) => ({ ...l, main: l.id === change.layoutId, staff: l.id === change.layoutId ? onDuty : [] })),
+      };
+    }
     case "layout.public":
       return withLayout(change.layoutId, (l) => ({ ...l, public: change.public }));
     case "layout.delete":

@@ -32,8 +32,8 @@ export async function loadShelter({ publicOnly = false } = {}): Promise<ShelterS
   const db = pool();
   const stages = publicOnly ? SHELTER_STAGES : null;
   const [layouts, areas, placements, staff] = await Promise.all([
-    db.query<{ id: string; name: string; public: boolean }>(
-      `select id, name, public from shelter_layouts ${publicOnly ? "where public" : ""} order by created_at, id`,
+    db.query<{ id: string; name: string; public: boolean; main: boolean }>(
+      `select id, name, public, main from shelter_layouts ${publicOnly ? "where public" : ""} order by created_at, id`,
     ),
     db.query<{ id: string; layout_id: string; label: string; x: number; y: number; w: number; h: number }>(
       "select id, layout_id, label, x, y, w, h from shelter_areas order by layout_id, id",
@@ -55,7 +55,7 @@ export async function loadShelter({ publicOnly = false } = {}): Promise<ShelterS
     ),
   ]);
   const byId = new Map<string, ShelterLayout>(
-    layouts.rows.map((l) => [l.id, { id: l.id, name: l.name, public: l.public, areas: [], placements: [], staff: [] }]),
+    layouts.rows.map((l) => [l.id, { id: l.id, name: l.name, public: l.public, main: l.main, areas: [], placements: [], staff: [] }]),
   );
   for (const a of areas.rows) byId.get(a.layout_id)?.areas.push({ id: a.id, label: a.label, x: a.x, y: a.y, w: a.w, h: a.h });
   for (const p of placements.rows) byId.get(p.layout_id)?.placements.push({ animalId: p.animal_id, x: p.x, y: p.y });
@@ -75,8 +75,11 @@ export async function changeShelter(change: ShelterChange, userId: string): Prom
       case "layout.create": {
         const { rows } = await tx.query<{ n: number }>("select count(*)::int as n from shelter_layouts");
         if (rows[0].n >= LAYOUTS_MAX) throw new ShelterError(`There can be up to ${LAYOUTS_MAX} layouts.`);
+        // The first layout starts as the main shelter.
         await tx.query(
-          "insert into shelter_layouts (id, name, updated_by) values ($1, $2, $3) on conflict (id) do nothing",
+          `insert into shelter_layouts (id, name, updated_by, main)
+           values ($1, $2, $3, not exists (select 1 from shelter_layouts where main))
+           on conflict (id) do nothing`,
           [change.id, change.name, userId],
         );
         return;
@@ -84,6 +87,14 @@ export async function changeShelter(change: ShelterChange, userId: string): Prom
       case "layout.rename":
         await touch(tx, change.layoutId, userId);
         await tx.query("update shelter_layouts set name = $2 where id = $1", [change.layoutId, change.name]);
+        return;
+      case "layout.main":
+        await touch(tx, change.layoutId, userId);
+        // One at a time: the index allows only one main layout.
+        await tx.query("update shelter_layouts set main = false where main and id <> $1", [change.layoutId]);
+        await tx.query("update shelter_layouts set main = true where id = $1", [change.layoutId]);
+        // Check-ins belong to the main shelter, so they move with it.
+        await tx.query("update shelter_staff set layout_id = $1", [change.layoutId]);
         return;
       case "layout.public":
         await touch(tx, change.layoutId, userId);
@@ -160,9 +171,9 @@ export async function changeShelter(change: ShelterChange, userId: string): Prom
         return;
       case "checkin": {
         // Who comes from the session (userId), never from the change itself.
-        // Only at the main shelter: the first layout shown to visitors.
-        const main = await tx.query<{ id: string }>("select id from shelter_layouts where public order by created_at, id limit 1");
-        if (!main.rows[0]) throw new ShelterError("Check-ins are for the main shelter. Turn on Show to visitors for it first.", 409);
+        // Only at the main shelter.
+        const main = await tx.query<{ id: string }>("select id from shelter_layouts where main");
+        if (!main.rows[0]) throw new ShelterError("Check-ins are for the main shelter. Choose which layout that is first.", 409);
         if (main.rows[0].id !== change.layoutId) throw new ShelterError("You can only check in at the main shelter.", 409);
         const spot = clampPoint(change.x, change.y);
         // Moving yourself keeps today's check-in time; checking in on a new day starts a new one.

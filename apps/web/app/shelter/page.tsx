@@ -22,9 +22,7 @@ export default async function ShelterPage() {
   if (session && !user) redirect("/api/session/gone");
   if (user) return <BoardApp initialMe={user} view="shelter" />;
 
-  const [{ layouts }, { board }] = await Promise.all([loadShelter({ publicOnly: true }), publicBoard()]);
-  // Only the animals on a public layout (already limited to the ones at the shelter).
-  const placed = new Set(layouts.flatMap((l) => l.placements.map((p) => p.animalId)));
-  const animals = Object.fromEntries(Object.entries(board.animals).filter(([id]) => placed.has(id)));
-  return <PublicShelter layouts={layouts} animals={animals} />;
+  // The same snapshot as the public Animals page, so each animal's side panel can show everything visitors may see.
+  const [{ layouts }, snapshot] = await Promise.all([loadShelter({ publicOnly: true }), publicBoard()]);
+  return <PublicShelter layouts={layouts} snapshot={snapshot} />;
 }

@@ -15,15 +15,16 @@ import type { Theme } from "@mui/material/styles";
 import type { SystemStyleObject } from "@mui/system";
 import { ROLE_LABELS, type Animal } from "@safe-paws/shared/protocol";
 import { areaAt, type ShelterLayout, type StaffSpot } from "@safe-paws/shared/shelter";
+import { useBoard } from "@safe-paws/shared/store";
 import NextLink from "next/link";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { AnimalAvatar } from "@/components/AnimalAvatar";
 
 /**
  * The read-only plan for members and visitors: where to find each animal when
  * they come to the shelter. Shows only the layouts staff made public, with a
  * search, and a "who's where" list (easier than the plan on a phone).
- * Each animal links to its page.
+ * Clicking an animal opens its details in a side panel.
  */
 
 /** The plan's ground: a soft grid, the same on the editor. */
@@ -79,6 +80,9 @@ export const areaTagSx = (selected = false) =>
     overflow: "hidden",
   }) as const;
 
+/** How big an animal's photo is on the plan (the lists beside it use smaller ones). */
+export const MARKER_PHOTO = 42;
+
 /** An animal on the plan: photo (or initial) with the name under it. */
 export const markerSx = {
   position: "absolute",
@@ -86,28 +90,61 @@ export const markerSx = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 0.25,
   width: 84,
-  p: 0.5,
-  border: 1,
-  borderColor: "divider",
-  borderRadius: 2,
-  bgcolor: "background.paper",
+  p: 0,
+  border: 0,
+  bgcolor: "transparent",
   color: "text.primary",
   font: "inherit",
   textDecoration: "none",
   "&:focus-visible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
 } as const;
 
-export const markerNameSx = {
-  fontSize: 12,
-  fontWeight: 600,
-  lineHeight: 1.2,
+/**
+ * Name labels: pink (the primary colour) for girls, blue for boys, with white
+ * text. The same shades in dark mode, where the lighter primary is too pale for white text.
+ */
+const SEX_FILL = { female: "#B93B77", male: "#1F6FB2" } as const;
+
+/**
+ * The name tucks a little over the bottom of the photo, coloured for girl or boy. `highlight`: being dragged, or matching the search.
+ */
+export const markerNameSx = (sex: Animal["sex"], highlight = false) =>
+  ({
+    position: "relative",
+    mt: -1,
+    px: 0.75,
+    py: 0.25,
+    borderRadius: 1,
+    bgcolor: SEX_FILL[sex],
+    color: "#ffffff",
+    ...(highlight ? { outline: 2, outlineColor: "text.primary", outlineOffset: 1 } : null),
+    fontSize: 12,
+  fontWeight: 500,
+  letterSpacing: "0.01em",
+  lineHeight: 1.4,
   maxWidth: "100%",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-} as const;
+  }) as const;
+
+/** What the name colours mean, under the plan. */
+export function MarkerKey() {
+  const swatch = (color: string) => (
+    <Box component="span" aria-hidden sx={{ width: 14, height: 10, borderRadius: 0.5, bgcolor: color, flexShrink: 0 }} />
+  );
+  return (
+    <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: "center" }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+        {swatch(SEX_FILL.female)} Girls
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+        {swatch(SEX_FILL.male)} Boys
+      </Typography>
+    </Stack>
+  );
+}
 
 /** Staff on the plan: a round badge (animals have square photos), in plum. */
 export function StaffFace({ name, size = 32 }: { name: string; size?: number }) {
@@ -127,6 +164,16 @@ export function StaffFace({ name, size = 32 }: { name: string; size?: number }) 
 
 /** "Dr Karim, Vet": their name and what they do. */
 export const staffLine = (s: StaffSpot) => `${s.name}, ${ROLE_LABELS[s.role]}`;
+
+/**
+ * A plain click opens the animal's details in a side panel, keeping the plan in view.
+ * Ctrl/Cmd-click (or middle-click) still opens its page in a new tab.
+ */
+function peek(e: MouseEvent, animalId: string) {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  useBoard.getState().openAnimal(animalId);
+}
 
 const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, "en-GB", { numeric: true });
 
@@ -236,6 +283,7 @@ export function ShelterMap({ layouts, animals }: { layouts: ShelterLayout[]; ani
                   key={p.animalId}
                   component={NextLink}
                   href={`/animals/${a.id}`}
+                  onClick={(e: MouseEvent) => peek(e, a.id)}
                   tabIndex={-1}
                   sx={{
                     ...markerSx,
@@ -243,19 +291,20 @@ export function ShelterMap({ layouts, animals }: { layouts: ShelterLayout[]; ani
                     top: `${p.y}%`,
                     zIndex: hit ? 4 : 3,
                     opacity: q && !hit ? 0.3 : 1,
-                    borderColor: hit ? "primary.main" : "divider",
-                    borderWidth: hit ? 2 : 1,
-                    boxShadow: hit ? 6 : 1,
                   }}
                 >
-                  <AnimalAvatar animal={a} size={32} />
-                  <Box component="span" sx={markerNameSx}>
+                  <AnimalAvatar animal={a} size={MARKER_PHOTO} />
+                  <Box
+                    component="span"
+                    sx={markerNameSx(a.sex, !!hit)}
+                  >
                     {a.name}
                   </Box>
                 </Box>
               );
             })}
           </Box>
+          <MarkerKey />
         </Box>
 
         <Paper variant="outlined" component="section" aria-label={`Who's in each area of ${layout.name}`} sx={{ p: 2 }}>
@@ -272,7 +321,7 @@ export function ShelterMap({ layouts, animals }: { layouts: ShelterLayout[]; ani
                 {onDuty.map((st) => (
                   <Box component="li" key={st.userId} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <StaffFace name={st.name} size={28} />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2">
                       {staffLine(st)}
                     </Typography>
                   </Box>
@@ -297,8 +346,10 @@ export function ShelterMap({ layouts, animals }: { layouts: ShelterLayout[]; ani
                         <Link
                           component={NextLink}
                           href={`/animals/${a.id}`}
+                          onClick={(e: MouseEvent) => peek(e, a.id)}
+                          aria-haspopup="dialog"
                           underline="hover"
-                          sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.primary", fontWeight: 600 }}
+                          sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.primary" }}
                         >
                           <AnimalAvatar animal={a} size={28} />
                           {a.name}

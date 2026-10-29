@@ -85,7 +85,7 @@ export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact
         <MenuItem disabled sx={{ opacity: "1 !important" }}>
           <ListItemText
             primary={`On duty at ${main.name}`}
-            secondary="Visitors can see you're here"
+            secondary={main.public ? "Visitors can see you're here" : "Only staff can see this layout"}
           />
         </MenuItem>
         <MenuItem onClick={checkOut}>
