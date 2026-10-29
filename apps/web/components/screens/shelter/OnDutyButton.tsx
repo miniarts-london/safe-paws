@@ -4,6 +4,7 @@ import CheckCircle from "@mui/icons-material/CheckCircle";
 import HowToRegOutlined from "@mui/icons-material/HowToRegOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -18,11 +19,11 @@ import { useState } from "react";
 import { useShelter } from "@/lib/useShelter";
 
 /**
- * "I'll be here" in the top bar, for staff: check in at the main shelter from any
+ * "I'm here" in the top bar, for staff: check in at the main shelter from any
  * page, so visitors know who to ask (other layouts have their own button on the
- * Shelter page). Once checked in there it shows "On duty", with a menu to check
- * out. Someone checked in at another layout sees "I'll be here", which moves them to
- * the main shelter. Hidden until there's a main shelter.
+ * Shelter page). Once checked in there it shows "At Main shelter" (its name),
+ * with a menu to check out. Someone checked in at another layout sees "I'm here",
+ * which moves them to the main shelter. Hidden until there's a main shelter.
  */
 export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact: boolean; onShelterPage: boolean }) {
   const { state, change, error, clearError } = useShelter(me);
@@ -48,21 +49,21 @@ export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact
     <>
       {!mine ? (
         compact ? (
-          <Tooltip title="I'll be here: go on duty at the shelter today" describeChild>
-            <IconButton aria-label={`I'll be here: go on duty at ${main.name} today`} onClick={checkIn} sx={{ color: "text.secondary" }}>
+          <Tooltip title={`I'm here: on duty at ${main.name} today`} describeChild>
+            <IconButton aria-label={`I'm here: on duty at ${main.name} today`} onClick={checkIn} sx={{ color: "text.secondary" }}>
               <HowToRegOutlined />
             </IconButton>
           </Tooltip>
         ) : (
           <Tooltip title={`On duty at ${main.name} today, so visitors know who to ask`} describeChild>
             <Button variant="outlined" size="small" startIcon={<HowToRegOutlined />} onClick={checkIn} sx={{ whiteSpace: "nowrap" }}>
-              I&apos;ll be here
+              I&apos;m here
             </Button>
           </Tooltip>
         )
       ) : compact ? (
         <IconButton
-          aria-label="On duty. Options"
+          aria-label={`At ${main.name}: on duty. Options`}
           aria-haspopup="menu"
           onClick={(e) => setMenu(e.currentTarget)}
           color="primary"
@@ -76,9 +77,11 @@ export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact
           startIcon={<CheckCircle />}
           aria-haspopup="menu"
           onClick={(e) => setMenu(e.currentTarget)}
-          sx={{ whiteSpace: "nowrap" }}
+          sx={{ whiteSpace: "nowrap", maxWidth: 220 }}
         >
-          On duty
+          <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            At {main.name}
+          </Box>
         </Button>
       )}
 

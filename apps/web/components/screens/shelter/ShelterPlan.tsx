@@ -535,7 +535,7 @@ function ShelterEditor() {
   );
 
   const others = (layout?.staff ?? []).filter((st) => st.userId !== me?.id);
-  // Who's on duty at this place. On the main shelter it's the same check-in as "I'll be here" in the top bar.
+  // Who's on duty at this place. On the main shelter it's the same check-in as "I'm here" in the top bar.
   const duty = layout && (
     <Paper variant="outlined" component="section" aria-labelledby="on-duty-title" sx={{ p: 1.5 }}>
       <Typography id="on-duty-title" component="h2" variant="overline" color="text.secondary" sx={{ px: 1 }}>
@@ -603,13 +603,13 @@ function ShelterEditor() {
             <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
-        {/* The main shelter: the layout the top bar's "I'll be here" checks in at. Only one is. */}
+        {/* The main shelter: the layout the top bar's "I'm here" checks in at. Only one is. */}
         {layout.main ? (
-          <Tooltip title="Main shelter: the I'll be here button at the top checks in here">
+          <Tooltip title="Main shelter: the I'm here button at the top checks in here">
             <Box
               role="img"
               tabIndex={0}
-              aria-label="Main shelter: the I'll be here button at the top checks in here"
+              aria-label="Main shelter: the I'm here button at the top checks in here"
               sx={{ display: "inline-flex", p: 1, color: "primary.main", borderRadius: "50%", "&:focus-visible": { outline: 2, outlineColor: "primary.main" } }}
             >
               <Home fontSize="small" />
@@ -621,7 +621,7 @@ function ShelterEditor() {
               aria-label={`Make ${layout.name} the main shelter`}
               onClick={() => {
                 send({ op: "layout.main", layoutId: layout.id });
-                setLive(`${layout.name} is now the main shelter. The I'll be here button at the top checks in here.`);
+                setLive(`${layout.name} is now the main shelter. The I'm here button at the top checks in here.`);
               }}
             >
               <HomeOutlined fontSize="small" />
