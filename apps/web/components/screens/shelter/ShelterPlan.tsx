@@ -46,7 +46,6 @@ import {
   nextAreaLabel,
   rectFromCorners,
   checkInSpot,
-  mainShelter,
   spotInArea,
   spotOnPlan,
   type Placement,
@@ -114,6 +113,7 @@ function save(id: string) {
   }
 }
 
+const noSelecting = (e: Event) => e.preventDefault();
 const byName = (a: Animal, b: Animal) => a.name.localeCompare(b.name, "en-GB");
 const percentAt = (rect: DOMRect, clientX: number, clientY: number) => ({
   x: ((clientX - rect.left) / rect.width) * 100,
@@ -175,7 +175,14 @@ function ShelterEditor() {
   const planRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
-  const suppressClick = useRef(false);
+  /** When the last drag ended (the pointer event's timeStamp): a click just after it is part of the drag. */
+  const dragEndedAt = useRef(-Infinity);
+  /** Pointer moves are drawn once per frame: the latest position wins. */
+  const frame = useRef<number | null>(null);
+  const lastPoint = useRef<{ clientX: number; clientY: number } | null>(null);
+
+  // Leaving the page mid-drag: let the page select text again.
+  useEffect(() => () => document.removeEventListener("selectstart", noSelecting), []);
 
   // Leave draw mode with Escape.
   useEffect(() => {
@@ -203,9 +210,9 @@ function ShelterEditor() {
 
   const shownAreas = areas.map((a) => (preview?.kind === "area" && preview.area.id === a.id ? preview.area : a));
   const drawn = preview?.kind === "draw" ? preview.rect : null;
-  // Staff check in at the main shelter only (the layout marked Main).
-  const main = mainShelter(layouts);
-  const myCheckIn = main?.staff.find((st) => st.userId === me?.id);
+  // Staff check in on the layout of the place they're at, one place at a time.
+  const myCheckIn = layout?.staff.find((st) => st.userId === me?.id);
+  const checkedInElsewhere = layouts.find((l) => l.id !== layout?.id && l.staff.some((st) => st.userId === me?.id));
   const shownPlacements: Placement[] = placements.map((p) => {
     if (preview?.kind === "animal" && preview.animalId === p.animalId) return { ...p, x: preview.x, y: preview.y };
     // Animals ride along with an area being moved.
@@ -240,8 +247,8 @@ function ShelterEditor() {
   };
   // Staff aren't drawn on the plan; they're listed under On duty today.
   const checkIn = () => {
-    if (!main || !me) return;
-    send({ op: "checkin", layoutId: main.id, ...checkInSpot(main, me.id) });
+    if (!layout || !me) return;
+    send({ op: "checkin", layoutId: layout.id, ...checkInSpot(layout, me.id) });
     setLive("You're on duty. Thanks!");
   };
   const checkOut = () => {
@@ -279,7 +286,13 @@ function ShelterEditor() {
 
   function begin(e: PointerEvent<HTMLElement>, g: Gesture) {
     if (e.button !== 0) return;
+    stopFrame();
+    dragEndedAt.current = -Infinity;
     gesture.current = g;
+    // Dragging across the page would otherwise select text on the way, and the browser can
+    // then try to drag that text, which leaves the next drag stuck until it gives up.
+    window.getSelection()?.removeAllRanges();
+    document.addEventListener("selectstart", noSelecting);
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -287,79 +300,103 @@ function ShelterEditor() {
     }
   }
 
+  /** What the plan should show for gesture `g` with the pointer at (clientX, clientY). */
+  function previewFor(g: Gesture, rect: DOMRect, clientX: number, clientY: number): NonNullable<Preview> {
+    const dx = ((clientX - g.startX) / rect.width) * 100;
+    const dy = ((clientY - g.startY) / rect.height) * 100;
+    if (g.kind === "animal") {
+      if (g.from === "tray") return { kind: "ghost", animalId: g.animalId, clientX, clientY };
+      return { kind: "animal", animalId: g.animalId, ...clampPoint(g.origin.x + dx, g.origin.y + dy), overTray: within(trayRef.current, clientX, clientY) };
+    }
+    if (g.kind === "move") return { kind: "area", origin: g.origin, area: clampArea({ ...g.origin, x: g.origin.x + dx, y: g.origin.y + dy }) };
+    if (g.kind === "resize") return { kind: "area", origin: g.origin, area: clampArea({ ...g.origin, w: g.origin.w + dx, h: g.origin.h + dy }) };
+    const start = percentAt(rect, g.startX, g.startY);
+    const end = percentAt(rect, clientX, clientY);
+    const r = rectFromCorners(start.x, start.y, end.x, end.y);
+    return { kind: "draw", rect: { x: Math.max(0, r.x), y: Math.max(0, r.y), w: Math.min(r.w, 100 - Math.max(0, r.x)), h: Math.min(r.h, 100 - Math.max(0, r.y)) } };
+  }
+
+  function stopFrame() {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    lastPoint.current = null;
+    document.removeEventListener("selectstart", noSelecting);
+  }
+
   function onMove(e: PointerEvent<HTMLElement>) {
     const g = gesture.current;
-    const rect = planRef.current?.getBoundingClientRect();
-    if (!g || g.pointerId !== e.pointerId || !rect) return;
+    if (!g || g.pointerId !== e.pointerId) return;
     if (!g.moved && Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < 5) return;
     g.moved = true;
-    const dx = ((e.clientX - g.startX) / rect.width) * 100;
-    const dy = ((e.clientY - g.startY) / rect.height) * 100;
-    if (g.kind === "animal") {
-      if (g.from === "tray") setPreview({ kind: "ghost", animalId: g.animalId, clientX: e.clientX, clientY: e.clientY });
-      else setPreview({ kind: "animal", animalId: g.animalId, ...clampPoint(g.origin.x + dx, g.origin.y + dy), overTray: within(trayRef.current, e.clientX, e.clientY) });
-    } else if (g.kind === "move") {
-      setPreview({ kind: "area", origin: g.origin, area: clampArea({ ...g.origin, x: g.origin.x + dx, y: g.origin.y + dy }) });
-    } else if (g.kind === "resize") {
-      setPreview({ kind: "area", origin: g.origin, area: clampArea({ ...g.origin, w: g.origin.w + dx, h: g.origin.h + dy }) });
-    } else {
-      const start = percentAt(rect, g.startX, g.startY);
-      const end = percentAt(rect, e.clientX, e.clientY);
-      const r = rectFromCorners(start.x, start.y, end.x, end.y);
-      setPreview({ kind: "draw", rect: { x: Math.max(0, r.x), y: Math.max(0, r.y), w: Math.min(r.w, 100 - Math.max(0, r.x)), h: Math.min(r.h, 100 - Math.max(0, r.y)) } });
-    }
+    // Trackpads send moves faster than the screen redraws. Drawing each one made the plan
+    // fall behind the pointer and feel stuck, so only the latest one per frame is drawn.
+    lastPoint.current = { clientX: e.clientX, clientY: e.clientY };
+    if (frame.current !== null) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      const point = lastPoint.current;
+      const current = gesture.current;
+      const rect = planRef.current?.getBoundingClientRect();
+      if (!point || !current || !rect) return;
+      setPreview(previewFor(current, rect, point.clientX, point.clientY));
+    });
   }
 
   function onUp(e: PointerEvent<HTMLElement>) {
     const g = gesture.current;
     if (!g || g.pointerId !== e.pointerId) return;
     gesture.current = null;
-    const shown = preview;
+    stopFrame();
     setPreview(null);
     if (!g.moved) return;
-    // The click that follows a drag (on the same element) isn't a click. If the pointer ended
-    // somewhere else there's no click at all, so don't let this swallow the next real one.
-    suppressClick.current = true;
-    setTimeout(() => {
-      suppressClick.current = false;
-    }, 0);
+    // The click that follows a drag (on the same element) isn't a click. Some browsers send it
+    // a moment later, so ignore clicks for a short while; the next press clears this (begin).
+    dragEndedAt.current = e.timeStamp;
     const rect = planRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Worked out from where the pointer let go, not from the last frame drawn.
+    const shown = previewFor(g, rect, e.clientX, e.clientY);
     if (g.kind === "animal") {
       const animal = animals![g.animalId];
       if (!animal) return;
-      if (g.from === "plan" && within(trayRef.current, e.clientX, e.clientY)) return takeOff(animal);
-      if (rect && within(planRef.current, e.clientX, e.clientY)) {
-        if (g.from === "tray") {
-          const at = percentAt(rect, e.clientX, e.clientY);
-          placeAt(animal, clampPoint(at.x, at.y));
-        } else if (shown?.kind === "animal") {
-          placeAt(animal, { x: shown.x, y: shown.y });
-        }
+      if (g.from === "plan") {
+        if (within(trayRef.current, e.clientX, e.clientY)) return takeOff(animal);
+        // Let go just past the edge of the plan (easy near the top): it stays at the edge,
+        // where it was shown, rather than jumping back to where it started.
+        if (shown.kind === "animal") placeAt(animal, { x: shown.x, y: shown.y });
+      } else if (within(planRef.current, e.clientX, e.clientY)) {
+        const at = percentAt(rect, e.clientX, e.clientY);
+        placeAt(animal, clampPoint(at.x, at.y));
       }
-    } else if ((g.kind === "move" || g.kind === "resize") && shown?.kind === "area") {
+    } else if ((g.kind === "move" || g.kind === "resize") && shown.kind === "area") {
       saveArea(shown.area);
       setLive(`${shown.area.label} ${g.kind === "move" ? "moved" : "resized"}.`);
-    } else if (g.kind === "draw" && shown?.kind === "draw") {
+    } else if (g.kind === "draw" && shown.kind === "draw") {
       // A click, or a scribble too small to be a room, isn't an area.
       if (shown.rect.w >= AREA_MIN / 2 && shown.rect.h >= AREA_MIN / 2) addArea(shown.rect);
     }
   }
 
-  function onCancel() {
+  function onCancel(e: PointerEvent<HTMLElement>) {
+    const g = gesture.current;
+    if (g && g.pointerId !== e.pointerId) return;
     gesture.current = null;
+    stopFrame();
     setPreview(null);
   }
 
   /** A click that ends a drag isn't a click. */
-  const clicked = (fn: () => void) => () => {
-    if (suppressClick.current) {
-      suppressClick.current = false;
+  const clicked = (fn: () => void) => (e: { timeStamp: number }) => {
+    if (e.timeStamp - dragEndedAt.current < 400) {
+      dragEndedAt.current = -Infinity;
       return;
     }
     fn();
   };
 
-  const handlers = { onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onCancel };
+  // Losing the pointer without letting go (the browser took it over, say) ends the drag
+  // rather than leaving the animal stuck to a pointer that has gone.
+  const handlers = { onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onCancel, onLostPointerCapture: onCancel };
 
   function nudgeAnimal(e: KeyboardEvent, p: Placement) {
     const step = ARROWS[e.key];
@@ -475,7 +512,7 @@ function ShelterEditor() {
                   {...handlers}
                   onClick={(e) => {
                     const anchor = e.currentTarget;
-                    clicked(() => setMenu({ anchor, animalId: a.id, placed: false }))();
+                    clicked(() => setMenu({ anchor, animalId: a.id, placed: false }))(e);
                   }}
                   sx={{ justifyContent: "flex-start", gap: 1.25, py: 0.75, touchAction: "pan-y", cursor: layout ? "grab" : undefined, opacity: preview?.kind === "ghost" && preview.animalId === a.id ? 0.4 : 1 }}
                 >
@@ -497,27 +534,24 @@ function ShelterEditor() {
     </Paper>
   );
 
-  const others = (main?.staff ?? []).filter((st) => st.userId !== me?.id);
-  // The same check-in as "I'm here" in the top bar, for the main shelter, whichever layout is open.
+  const others = (layout?.staff ?? []).filter((st) => st.userId !== me?.id);
+  // Who's on duty at this place. On the main shelter it's the same check-in as "I'm here" in the top bar.
   const duty = layout && (
     <Paper variant="outlined" component="section" aria-labelledby="on-duty-title" sx={{ p: 1.5 }}>
       <Typography id="on-duty-title" component="h2" variant="overline" color="text.secondary" sx={{ px: 1 }}>
         On duty today
       </Typography>
-      {main && (
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ px: 1, mt: -0.5, mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
-          <HomeOutlined sx={{ fontSize: 14 }} aria-hidden /> At {main.name}
-        </Typography>
-      )}
+      <Typography variant="caption" color="text.secondary" component="p" sx={{ px: 1, mt: -0.5, mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
+        {layout.main && <HomeOutlined sx={{ fontSize: 14 }} aria-hidden />} At {layout.name}
+        {layout.main ? " (main shelter)" : ""}
+      </Typography>
       <Box sx={{ px: 1, pb: 0.5 }}>
-        {!main ? (
-          <Typography variant="body2" color="text.secondary">
-            Staff check in at the main shelter, so visitors know who to ask. Open the shelter&apos;s layout and press the house next to its name to make it the main shelter.
-          </Typography>
-        ) : !myCheckIn ? (
+        {!myCheckIn ? (
           <>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              At the shelter? Check in so visitors know who to ask. It lasts until you check out, or the end of the day.
+              {checkedInElsewhere
+                ? `You're checked in at ${checkedInElsewhere.name}. Here instead? Checking in here moves you.`
+                : "Here today? Check in so visitors know who to ask. It lasts until you check out, or the end of the day."}
             </Typography>
             <Button variant="contained" size="small" onClick={() => checkIn()}>
               I&apos;m here
@@ -526,21 +560,19 @@ function ShelterEditor() {
         ) : (
           <>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              You&apos;re on duty today.{main.public ? " Visitors can see you're here." : ""}
+              You&apos;re on duty here today.{layout.public ? " Visitors can see you're here." : ""}
             </Typography>
             <Button variant="outlined" size="small" color="inherit" onClick={checkOut}>
               I&apos;ve left
             </Button>
           </>
         )}
-        {main && others.length > 0 && (
+        {others.length > 0 && (
           <Stack component="ul" spacing={0.75} sx={{ listStyle: "none", m: 0, p: 0, mt: 1.5 }}>
             {others.map((spot) => (
               <Box component="li" key={spot.userId} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <StaffFace name={spot.name} size={26} />
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {staffLine(spot)}
-                </Typography>
+                <Typography variant="body2">{staffLine(spot)}</Typography>
               </Box>
             ))}
           </Stack>
@@ -566,13 +598,13 @@ function ShelterEditor() {
             <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
-        {/* Which layout staff check in at ("I'm here"). Only one is the main shelter. */}
+        {/* The main shelter: the layout the top bar's "I'm here" checks in at. Only one is. */}
         {layout.main ? (
-          <Tooltip title="Main shelter: staff check in here with I'm here">
+          <Tooltip title="Main shelter: the I'm here button at the top checks in here">
             <Box
               role="img"
               tabIndex={0}
-              aria-label="Main shelter: staff check in here"
+              aria-label="Main shelter: the I'm here button at the top checks in here"
               sx={{ display: "inline-flex", p: 1, color: "primary.main", borderRadius: "50%", "&:focus-visible": { outline: 2, outlineColor: "primary.main" } }}
             >
               <Home fontSize="small" />
@@ -584,7 +616,7 @@ function ShelterEditor() {
               aria-label={`Make ${layout.name} the main shelter`}
               onClick={() => {
                 send({ op: "layout.main", layoutId: layout.id });
-                setLive(`${layout.name} is now the main shelter. Staff check in here.`);
+                setLive(`${layout.name} is now the main shelter. The I'm here button at the top checks in here.`);
               }}
             >
               <HomeOutlined fontSize="small" />
@@ -713,7 +745,7 @@ function ShelterEditor() {
               {...handlers}
               onClick={(e: MouseEvent<HTMLElement>) => {
                 const anchor = e.currentTarget;
-                clicked(() => setMenu({ anchor, animalId: p.animalId, placed: true }))();
+                clicked(() => setMenu({ anchor, animalId: p.animalId, placed: true }))(e);
               }}
               onKeyDown={(e: KeyboardEvent) => nudgeAnimal(e, p)}
               sx={{
@@ -884,7 +916,9 @@ function ShelterEditor() {
         </Paper>
       )}
 
-      <Menu anchorEl={menu?.anchor} open={!!menu && !!menuAnimal} onClose={() => setMenu(null)}>
+      {/* Closes at once: while a menu fades out, its invisible backdrop still covers the plan,
+          so grabbing an animal straight after closing it did nothing (and selected text). */}
+      <Menu anchorEl={menu?.anchor} open={!!menu && !!menuAnimal} onClose={() => setMenu(null)} transitionDuration={{ enter: 150, exit: 0 }}>
         {menuAnimal && [
           <MenuItem
             key="open"
@@ -1021,7 +1055,7 @@ function AreaBox({
   editing: boolean;
   onGrab: (e: PointerEvent<HTMLElement>) => void;
   onResize: (e: PointerEvent<HTMLElement>) => void;
-  onSelect: () => void;
+  onSelect: (e: MouseEvent) => void;
   onEdit: () => void;
   onRename: (label: string) => void;
   onCancelEdit: () => void;

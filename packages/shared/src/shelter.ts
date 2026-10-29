@@ -11,12 +11,13 @@ import type { Animal, Role, StageId } from "./protocol";
  * A layout marked public is also shown, read-only, to members and to visitors
  * who aren't signed in, so they know where to find each animal when they visit.
  *
- * One layout is marked as the main shelter. Staff on duty check in there, so
- * visitors know who to ask. A check-in lasts until they check out or the day
- * ends (Egypt time).
+ * Staff on duty check in on the layout of the place they're at ("I'm here"), so
+ * visitors know who to ask; one place at a time. A check-in lasts until they
+ * check out or the day ends (Egypt time). One layout is marked as the main
+ * shelter: the top bar's "I'm here" button is for that one.
  */
 
-/** The main shelter, where staff check in. Staff choose it; the first layout made starts as main. */
+/** The main shelter, which the top bar's "I'm here" is for. Staff choose it; the first layout made starts as main. */
 export const mainShelter = <T extends { main: boolean }>(layouts: T[]): T | undefined => layouts.find((l) => l.main);
 
 /** Days end at midnight here, where the rescue is. */
@@ -43,7 +44,7 @@ export type ShelterLayout = {
   name: string;
   /** Shown to everyone, visitors included, so they know where to find each animal. */
   public: boolean;
-  /** The main shelter: where staff check in. Only one layout is. */
+  /** The main shelter: the one the top bar's "I'm here" checks in at. Only one layout is. */
   main: boolean;
   areas: ShelterArea[];
   placements: Placement[];
@@ -149,7 +150,7 @@ export const shelterChangeSchema = z.discriminatedUnion("op", [
   /** Puts an animal on a layout, or moves it (from this layout or another). */
   z.object({ op: z.literal("place"), animalId: id, layoutId: id, x: percent, y: percent }),
   z.object({ op: z.literal("unplace"), animalId: id }),
-  /** "I'm here": the person signed in puts themselves on the main shelter, or moves. Never anyone else. */
+  /** "I'm here": the person signed in checks in on this layout (leaving any other). Never anyone else. */
   z.object({ op: z.literal("checkin"), layoutId: id, x: percent, y: percent }),
   /** "I've left". */
   z.object({ op: z.literal("checkout") }),
@@ -180,13 +181,9 @@ export function applyShelterChange(
       };
     case "layout.rename":
       return withLayout(change.layoutId, (l) => ({ ...l, name: change.name.trim() }));
-    case "layout.main": {
-      // Check-ins belong to the main shelter, so they move with it.
-      const onDuty = state.layouts.flatMap((l) => l.staff);
-      return {
-        layouts: state.layouts.map((l) => ({ ...l, main: l.id === change.layoutId, staff: l.id === change.layoutId ? onDuty : [] })),
-      };
-    }
+    case "layout.main":
+      // Who's checked in where stays as it is.
+      return { layouts: state.layouts.map((l) => ({ ...l, main: l.id === change.layoutId })) };
     case "layout.public":
       return withLayout(change.layoutId, (l) => ({ ...l, public: change.public }));
     case "layout.delete":

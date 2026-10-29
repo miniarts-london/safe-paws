@@ -18,10 +18,11 @@ import { useState } from "react";
 import { useShelter } from "@/lib/useShelter";
 
 /**
- * "I'm here" in the top bar, for staff: check in at the main shelter (the
- * layout shown to visitors) from any page, so visitors know who to ask. Once
- * checked in it shows "On duty", with a menu to check out. Staff aren't drawn on
- * the plan; visitors see a list of who's on duty. Hidden until there's a main shelter.
+ * "I'm here" in the top bar, for staff: check in at the main shelter from any
+ * page, so visitors know who to ask (other layouts have their own button on the
+ * Shelter page). Once checked in there it shows "On duty", with a menu to check
+ * out. Someone checked in at another layout sees "I'm here", which moves them to
+ * the main shelter. Hidden until there's a main shelter.
  */
 export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact: boolean; onShelterPage: boolean }) {
   const { state, change, error, clearError } = useShelter(me);

@@ -93,8 +93,6 @@ export async function changeShelter(change: ShelterChange, userId: string): Prom
         // One at a time: the index allows only one main layout.
         await tx.query("update shelter_layouts set main = false where main and id <> $1", [change.layoutId]);
         await tx.query("update shelter_layouts set main = true where id = $1", [change.layoutId]);
-        // Check-ins belong to the main shelter, so they move with it.
-        await tx.query("update shelter_staff set layout_id = $1", [change.layoutId]);
         return;
       case "layout.public":
         await touch(tx, change.layoutId, userId);
@@ -171,10 +169,9 @@ export async function changeShelter(change: ShelterChange, userId: string): Prom
         return;
       case "checkin": {
         // Who comes from the session (userId), never from the change itself.
-        // Only at the main shelter.
-        const main = await tx.query<{ id: string }>("select id from shelter_layouts where main");
-        if (!main.rows[0]) throw new ShelterError("Check-ins are for the main shelter. Choose which layout that is first.", 409);
-        if (main.rows[0].id !== change.layoutId) throw new ShelterError("You can only check in at the main shelter.", 409);
+        // On any layout, one at a time: checking in somewhere else moves you there.
+        const layout = await tx.query("select 1 from shelter_layouts where id = $1", [change.layoutId]);
+        if (!layout.rowCount) throw new ShelterError("That layout has been deleted.", 404);
         const spot = clampPoint(change.x, change.y);
         // Moving yourself keeps today's check-in time; checking in on a new day starts a new one.
         await tx.query(

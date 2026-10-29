@@ -50,6 +50,8 @@ export const useShelterStore = create<ShelterStore>((set, get) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(change),
+          // A request that never answers would hold up every change after it.
+          signal: AbortSignal.timeout(20_000),
         });
         const body = await res.json().catch(() => ({ error: OFFLINE }));
         if (!res.ok) {
@@ -88,7 +90,7 @@ export const useShelterStore = create<ShelterStore>((set, get) => {
       // A copy fetched now would undo changes that are still on their way.
       if (unsaved > 0) return;
       try {
-        const res = await fetch("/api/shelter", { cache: "no-store" });
+        const res = await fetch("/api/shelter", { cache: "no-store", signal: AbortSignal.timeout(20_000) });
         const body = await res.json().catch(() => ({ error: OFFLINE }));
         if (unsaved > 0) return;
         if (!res.ok) set({ error: body.error ?? OFFLINE });
