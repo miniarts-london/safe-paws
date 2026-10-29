@@ -150,7 +150,7 @@ export default function BoardApp({
               label={conn.label}
               sx={{ display: { xs: "none", sm: "inline-flex" } }}
             />
-            {/* Staff: "I'm here" at the main shelter, next to their name. */}
+            {/* Staff: "I'll be here" at the main shelter, next to their name. */}
             {canEdit && <OnDutyButton me={me} compact={mobile} onShelterPage={view === "shelter"} />}
             {/* Name and title: a menu with Profile, and Settings for coordinators. */}
             <AccountMenu me={me} compact={mobile} />

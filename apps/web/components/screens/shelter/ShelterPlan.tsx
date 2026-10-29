@@ -535,7 +535,7 @@ function ShelterEditor() {
   );
 
   const others = (layout?.staff ?? []).filter((st) => st.userId !== me?.id);
-  // Who's on duty at this place. On the main shelter it's the same check-in as "I'm here" in the top bar.
+  // Who's on duty at this place. On the main shelter it's the same check-in as "I'll be here" in the top bar.
   const duty = layout && (
     <Paper variant="outlined" component="section" aria-labelledby="on-duty-title" sx={{ p: 1.5 }}>
       <Typography id="on-duty-title" component="h2" variant="overline" color="text.secondary" sx={{ px: 1 }}>
@@ -543,18 +543,23 @@ function ShelterEditor() {
       </Typography>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ px: 1, mt: -0.5, mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
         {layout.main && <HomeOutlined sx={{ fontSize: 14 }} aria-hidden />} At {layout.name}
-        {layout.main ? " (main shelter)" : ""}
+        {layout.main && !/main shelter/i.test(layout.name) ? " (main shelter)" : ""}
       </Typography>
       <Box sx={{ px: 1, pb: 0.5 }}>
         {!myCheckIn ? (
           <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {checkedInElsewhere
-                ? `You're checked in at ${checkedInElsewhere.name}. Here instead? Checking in here moves you.`
-                : "Here today? Check in so visitors know who to ask. It lasts until you check out, or the end of the day."}
-            </Typography>
+            {others.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                No one is on duty today.
+              </Typography>
+            )}
+            {checkedInElsewhere && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                You&apos;re on duty at {checkedInElsewhere.name}. Pressing this moves you here.
+              </Typography>
+            )}
             <Button variant="contained" size="small" onClick={() => checkIn()}>
-              I&apos;m here
+              I&apos;ll be here
             </Button>
           </>
         ) : (
@@ -598,13 +603,13 @@ function ShelterEditor() {
             <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
-        {/* The main shelter: the layout the top bar's "I'm here" checks in at. Only one is. */}
+        {/* The main shelter: the layout the top bar's "I'll be here" checks in at. Only one is. */}
         {layout.main ? (
-          <Tooltip title="Main shelter: the I'm here button at the top checks in here">
+          <Tooltip title="Main shelter: the I'll be here button at the top checks in here">
             <Box
               role="img"
               tabIndex={0}
-              aria-label="Main shelter: the I'm here button at the top checks in here"
+              aria-label="Main shelter: the I'll be here button at the top checks in here"
               sx={{ display: "inline-flex", p: 1, color: "primary.main", borderRadius: "50%", "&:focus-visible": { outline: 2, outlineColor: "primary.main" } }}
             >
               <Home fontSize="small" />
@@ -616,7 +621,7 @@ function ShelterEditor() {
               aria-label={`Make ${layout.name} the main shelter`}
               onClick={() => {
                 send({ op: "layout.main", layoutId: layout.id });
-                setLive(`${layout.name} is now the main shelter. The I'm here button at the top checks in here.`);
+                setLive(`${layout.name} is now the main shelter. The I'll be here button at the top checks in here.`);
               }}
             >
               <HomeOutlined fontSize="small" />

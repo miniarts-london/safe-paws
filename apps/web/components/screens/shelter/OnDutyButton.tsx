@@ -18,10 +18,10 @@ import { useState } from "react";
 import { useShelter } from "@/lib/useShelter";
 
 /**
- * "I'm here" in the top bar, for staff: check in at the main shelter from any
+ * "I'll be here" in the top bar, for staff: check in at the main shelter from any
  * page, so visitors know who to ask (other layouts have their own button on the
  * Shelter page). Once checked in there it shows "On duty", with a menu to check
- * out. Someone checked in at another layout sees "I'm here", which moves them to
+ * out. Someone checked in at another layout sees "I'll be here", which moves them to
  * the main shelter. Hidden until there's a main shelter.
  */
 export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact: boolean; onShelterPage: boolean }) {
@@ -48,15 +48,15 @@ export function OnDutyButton({ me, compact, onShelterPage }: { me: User; compact
     <>
       {!mine ? (
         compact ? (
-          <Tooltip title="I'm here: check in at the shelter" describeChild>
-            <IconButton aria-label={`I'm here: check in at ${main.name}`} onClick={checkIn} sx={{ color: "text.secondary" }}>
+          <Tooltip title="I'll be here: go on duty at the shelter today" describeChild>
+            <IconButton aria-label={`I'll be here: go on duty at ${main.name} today`} onClick={checkIn} sx={{ color: "text.secondary" }}>
               <HowToRegOutlined />
             </IconButton>
           </Tooltip>
         ) : (
-          <Tooltip title={`Check in at ${main.name}, so visitors know who to ask`} describeChild>
+          <Tooltip title={`On duty at ${main.name} today, so visitors know who to ask`} describeChild>
             <Button variant="outlined" size="small" startIcon={<HowToRegOutlined />} onClick={checkIn} sx={{ whiteSpace: "nowrap" }}>
-              I&apos;m here
+              I&apos;ll be here
             </Button>
           </Tooltip>
         )
